@@ -18,14 +18,19 @@
         >
         </v-img>
       </v-col>
-      <v-col cols="3" class="text-end">
-        <Icon_ArtifactLookup
-          class="mr-2 mt-2"
-          height="36"
-          width="36"
+      <v-col cols="3" class="d-flex justify-end">
+        <div
+          class="align-center border-sm border-opacity-100 elevation-2 d-flex rounded-circle text-center"
+          style="height: 50px; width: 50px;"
         >
+          <Icon_ArtifactLookup
+            class="ma-auto"
+            height="36"
+            width="36"
+          >
         </Icon_ArtifactLookup>
-      </v-col>
+      </div>
+    </v-col>
     </div>
     <v-slide-x-reverse-transition>
       <v-fab

@@ -12,7 +12,7 @@
         />
         <v-btn
           v-else-if="selectedWpn"
-          class="equipmentCard-weaponBtn"
+          class="equipmentCard-weaponBtn elevation-2"
           variant="outlined"
           @click="showWeaponSelector = true"
         >
