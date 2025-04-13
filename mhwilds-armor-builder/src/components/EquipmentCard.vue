@@ -94,26 +94,26 @@
 </template>
 
 <script setup>
-import Image_ArmorHead from '@/assets/images/Armor_Head.png';
-import Image_ArmorChest from '@/assets/images/Armor_Chest.png';
-import Image_ArmorArms from '@/assets/images/Armor_Arms.png';
-import Image_ArmorWaist from '@/assets/images/Armor_Waist.png';
-import Image_ArmorLegs from '@/assets/images/Armor_Legs.png';
-import Image_ArmorTalisman from '@/assets/images/Armor_Talisman.png';
-import Image_WeaponGreatSword from '@/assets/images/Weapon_GreatSword.png';
-import Image_WeaponLongSword from '@/assets/images/Weapon_LongSword.png';
-import Image_WeaponSwordShield from '@/assets/images/Weapon_SwordShield.png';
-import Image_WeaponDualBlades from '@/assets/images/Weapon_DualBlades.png';
-import Image_WeaponHammer from '@/assets/images/Weapon_Hammer.png';
-import Image_WeaponHuntingHorn from '@/assets/images/Weapon_HuntingHorn.png';
-import Image_WeaponLance from '@/assets/images/Weapon_Lance.png';
-import Image_WeaponGunlance from '@/assets/images/Weapon_Gunlance.png';
-import Image_WeaponSwitchAxe from '@/assets/images/Weapon_SwitchAxe.png';
-import Image_WeaponChargeBlade from '@/assets/images/Weapon_ChargeBlade.png';
-import Image_WeaponInsectGlaive from '@/assets/images/Weapon_InsectGlaive.png';
-import Image_WeaponBow from '@/assets/images/Weapon_Bow.png';
-import Image_WeaponLightBowgun from '@/assets/images/Weapon_LightBowgun.png';
-import Image_WeaponHeavyBowgun from '@/assets/images/Weapon_HeavyBowgun.png';
+import Image_ArmorHead from '@/assets/images/equipment/Armor_Head.png';
+import Image_ArmorChest from '@/assets/images/equipment/Armor_Chest.png';
+import Image_ArmorArms from '@/assets/images/equipment/Armor_Arms.png';
+import Image_ArmorWaist from '@/assets/images/equipment/Armor_Waist.png';
+import Image_ArmorLegs from '@/assets/images/equipment/Armor_Legs.png';
+import Image_ArmorTalisman from '@/assets/images/equipment/Armor_Talisman.png';
+import Image_WeaponGreatSword from '@/assets/images/equipment/Weapon_GreatSword.png';
+import Image_WeaponLongSword from '@/assets/images/equipment/Weapon_LongSword.png';
+import Image_WeaponSwordShield from '@/assets/images/equipment/Weapon_SwordShield.png';
+import Image_WeaponDualBlades from '@/assets/images/equipment/Weapon_DualBlades.png';
+import Image_WeaponHammer from '@/assets/images/equipment/Weapon_Hammer.png';
+import Image_WeaponHuntingHorn from '@/assets/images/equipment/Weapon_HuntingHorn.png';
+import Image_WeaponLance from '@/assets/images/equipment/Weapon_Lance.png';
+import Image_WeaponGunlance from '@/assets/images/equipment/Weapon_Gunlance.png';
+import Image_WeaponSwitchAxe from '@/assets/images/equipment/Weapon_SwitchAxe.png';
+import Image_WeaponChargeBlade from '@/assets/images/equipment/Weapon_ChargeBlade.png';
+import Image_WeaponInsectGlaive from '@/assets/images/equipment/Weapon_InsectGlaive.png';
+import Image_WeaponBow from '@/assets/images/equipment/Weapon_Bow.png';
+import Image_WeaponLightBowgun from '@/assets/images/equipment/Weapon_LightBowgun.png';
+import Image_WeaponHeavyBowgun from '@/assets/images/equipment/Weapon_HeavyBowgun.png';
 
 import EquipmentSelector from './EquipmentSelector.vue';
 import EquipmentSlots from './EquipmentSlots.vue';
