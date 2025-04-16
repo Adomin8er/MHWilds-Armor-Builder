@@ -72,16 +72,6 @@
                 : (skill.currentLevelDescription || skill.overallDescription || 'No description available.')
             }}
           </v-list-item-subtitle>
-
-          <v-tooltip activator="parent" location="bottom end" max-width="350px">
-            <div class="font-weight-bold mb-1">{{ skill.name }} Sources:</div>
-            <div v-if="skill.type === 'set' || skill.type === 'group'" class="mb-1 text-caption">
-                Contributing Pieces: {{ skill.pieceCount }}
-            </div>
-            <ul class="source-list">
-                <li v-for="source in skill.sources" :key="source">{{ source }}</li>
-            </ul>
-          </v-tooltip>
         </v-list-item>
       </v-list>
 
