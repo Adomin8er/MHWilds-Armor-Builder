@@ -29,6 +29,7 @@
           class="mb-4"
         >
           <v-btn>Armors</v-btn>
+          <v-btn>Weapons</v-btn>
           <v-btn>Decorations</v-btn>
           <v-btn>Skills</v-btn>
         </v-btn-toggle>
@@ -101,7 +102,7 @@
   const search = ref('');
 
   const selectedDataTypeIndex = ref(0); // 0: Armors, 1: Decorations, 2: Skills 
-  const dataTypes = ['Armors', 'Decorations', 'Skills'];
+  const dataTypes = ['Armors', 'Weapons', 'Decorations', 'Skills'];
   const selectedDatatable = computed(() => dataTypes[selectedDataTypeIndex.value]);
   
   const headersConfig = {
@@ -111,6 +112,12 @@
     { key: "slots", title: "Slots", align: 'center', sortable: false, width: '100px' },
     { key: "skills", title: "Skills", align: 'start', sortable: false, width: '350px' },
     { key: "armorSet", title: "Set", align: 'start', sortable: true, width: '200px' },
+  ],
+  Weapons: [
+    { key: "name", title: "Name", align: 'start', sortable: true, width: '250px' },
+    { key: "kind", title: "Type", align: 'start', sortable: true, width: '100px' },
+    { key: "slots", title: "Slots", align: 'center', sortable: false, width: '200px' },
+    { key: "skills", title: "Skills", align: 'start', sortable: false, width: '240px' },
   ],
   Decorations: [
     { key: "name", title: "Name", align: 'start', sortable: true, width: '250px' },
@@ -139,6 +146,19 @@
           slots: armor.slots?.join('-') || '-',
           skills: armor.skills?.map(s => `${s.skill.name} Lvl ${s.level}`).join(', ') || '-',
           armorSet: armor.armorSet?.name || 'N/A'
+       }));
+    }),
+    Weapons: computed(() => {
+      if (!dataStore.allWeaponData) return [];
+      let keyCounter = 0;
+      return dataStore.allWeaponData.map(weapon => ({
+          key: `weapon-${weapon.id || keyCounter++}`,
+          name: weapon.name,
+          kind: weapon.kind.charAt(0).toUpperCase() + weapon.kind.slice(1),
+          defense: weapon.defense?.base || '-',
+          slots: weapon.slots?.join('-') || '-',
+          skills: weapon.skills?.map(s => `${s.skill.name} Lvl ${s.level}`).join(', ') || '-',
+          weaponSet: weapon.weaponSet?.name || 'N/A'
        }));
     }),
     Decorations: computed(() => {
