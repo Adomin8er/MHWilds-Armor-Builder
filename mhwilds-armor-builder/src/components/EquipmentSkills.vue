@@ -1,321 +1,341 @@
 <template>
-  <v-container class="equipmentSkills-vContainer">
+  <v-container class="equipmentSkills-vContainer pa-0">
     <v-row
-      v-for="(skillGroupObject, groupIndex) in equipmentSkills"
+      v-for="(skillGroupObject, groupKey) in displayedSkills"
+      :key="groupKey"
       class="equipmentSkills-vRow"
+      dense
     >
       <v-col
-        v-for="(skillName, skillIndex) in skillGroupObject"
-        class="equipmentSkills-vCol pa-0 text-center"
+        v-for="(skillName, skillKey) in skillGroupObject"
+        :key="`${groupKey}-${skillKey}`"
+        class="equipmentSkills-vCol pa-1 text-center"
         cols="4"
         md="2"
       >
-        <v-img
-          v-if="skillIndex.startsWith('equipmentSkill')"
-          cover
-          height="16"
-          >
-          <div
-            class="equipmentSkills-vImg-div-equipmentSkill"
-          >
-            {{ skillName }}
-          </div>
-        </v-img>
-        <v-img
-          v-if="skillIndex.startsWith('setSkill')"
-          cover
-          height="16"
-          >
-          <div
-            class="equipmentSkills-vImg-div-setSkill"
-          >
-            {{ skillName }}
-          </div>
-        </v-img>
-        <v-img
-          v-if="skillIndex.startsWith('groupSkill')"
-          cover
-          height="16"
-          >
-          <div
-            class="equipmentSkills-vImg-div-groupSkill"
-          >
-            {{ skillName }}
-          </div>
-        </v-img>
+        <v-tooltip activator="parent" location="top" :disabled="!skillName || skillName === '-'">
+          {{ skillName }}
+        </v-tooltip>
+
+        <div :class="getSkillClass(skillName)" class="skill-chip">
+          {{ formatSkillDisplay(skillName) }}
+        </div>
       </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+// Plugin Constants
+import { ref, computed, watch } from 'vue';
 
+// Pinia Stores
+import { useDataStore } from '@/stores/data';
+import { useBuildStore } from '@/stores/build';
+import { API_ENDPOINTS } from '@/constants';
+
+// Props
 const props = defineProps({
-  api_baseUrl: String,
-  selectedEquipmentType: String,
-  selectedEquipmentName: String,
-  selectedDecorations: Object
-});
-
-const emit = defineEmits(['all-skills']);
-
-const equipmentEndpoints = {
-  "head": 'armor',
-  "chest": 'armor',
-  "arms": 'armor',
-  "waist": 'armor',
-  "legs": 'armor',
-  "talisman": 'charms',
-  "weapon": 'weapons',  
-};
-
-const getInitialEquipmentSkills = () => ({
-  equipmentSkillGroup_1: {
-    equipmentSkill_1: "-",
-    equipmentSkill_2: "-",
-    equipmentSkill_3: "-",
-    equipmentSkill_4: "-",
-    equipmentSkill_5: "-",
-    equipmentSkill_6: "-"
-  },
-  equipmentSkillGroup_2: {
-    equipmentSkill_7: "-",
-    equipmentSkill_8: "-",
-    equipmentSkill_9: "-",
-    equipmentSkill_10: "-",
-    equipmentSkill_11: "-",
-    equipmentSkill_12: "-"
-  },
-  equipmentSkillGroup_3: {
-    equipmentSkill_13: "-",
-    equipmentSkill_14: "-",
-    equipmentSkill_15: "-",
-    equipmentSkill_16: "-",
-    setSkill: "-",
-    groupSkill: "-",
+  equipmentKey: {
+    type: String,
+    required: true
   }
 });
 
-const equipmentSkills = ref(getInitialEquipmentSkills());
-const equipmentSkillsEmitted = ref({})
-let fetchingEquipmentSkills = false
+// Stores
+const dataStore = useDataStore();
+const buildStore = useBuildStore();
 
-watch(
-  [() => props.selectedEquipmentType, () => props.selectedEquipmentName],  (newEquipmentObject) => {
-    return fetchEquipmentSkills(newEquipmentObject[0], newEquipmentObject[1]);
-  }
-);
+// Computed Properties
 
-async function fetchEquipmentSkills(equipmentType, equipmentName) {
-  fetchingEquipmentSkills = true
-  equipmentSkills.value = getInitialEquipmentSkills();
-  let endpoint = equipmentEndpoints[equipmentType];
+const selectedItemName = computed(() => {
+    return buildStore.selectedEquipment[props.equipmentKey]?.name ?? null;
+});
 
-  if (!endpoint) {
-    console.warn(`Unknown equipment type: ${equipmentType}`);
-    return;
-  }
-  
-  try {
-    const equipmentSkillsResponse = await fetch(`${props.api_baseUrl}${endpoint}`);
-    const equipmentSkillsData = await equipmentSkillsResponse.json();
-    let queryArmorSkills = [];
-    let queryArmorSet = "";
+const selectedDecorations = computed(() => {
+    const key = props.equipmentKey;
+    if (!key) {
+        console.error(`EquipmentSkills: Received invalid equipmentKey: ${key}`);
+        return [];
+    }
+    const pieceData = buildStore.selectedEquipment[key];
+    const decorationsFromStore = pieceData?.decorations;
 
-    const setResponse = await fetch(`${props.api_baseUrl}armor/sets`);
-    const setData = await setResponse.json();
-    let querySetSkills = [];
-    let queryGroupSkills = [];
+    if (decorationsFromStore && !Array.isArray(decorationsFromStore)) {
+        console.error(`EquipmentSkills (${key}): Store returned a NON-ARRAY for decorations! Value:`, JSON.stringify(decorationsFromStore), `Type: ${typeof decorationsFromStore}. FORCING to empty array.`);
+        return [];
+    }
+    return decorationsFromStore || [];
+});
 
-    if (['head', 'chest', 'arms', 'waist', 'legs'].includes(equipmentType)) {
-        queryArmorSkills = equipmentSkillsData
-            .filter(item => item.name === equipmentName)
-            .flatMap(item => item.skills)
-            .flatMap(skillInfo => Array(skillInfo.level).fill(`(E) - ${skillInfo.skill.name}`));
-        queryArmorSet = equipmentSkillsData
-            .filter(item => item.name === equipmentName)
-            .map(item => item.armorSet).flat()
-            .map(item => item.name)[0]
-        try{
-            querySetSkills = setData
-                .filter(item => item.name === queryArmorSet)
-                .map(item => item.bonus).flat()
-                .map(item => item.skill).flat()
-                .map(item => `(E) - ${item.name}`).flat()
-        } catch (error) {
-            console.log('Armor has no Set Skills.');
+const selectedItemData = computed(() => {
+    const name = selectedItemName.value;
+    if (!name || dataStore.isLoading) return null;
+
+    const key = props.equipmentKey;
+    const endpoint = API_ENDPOINTS[key];
+
+    try {
+        if (endpoint === 'armor') {
+            return dataStore.allArmorData.find(item => item.name === name);
+        } else if (endpoint === 'weapons') {
+            return dataStore.allWeaponData.find(item => item.name === name);
+        } else if (endpoint === 'charms') {
+             return dataStore.allCharmData
+                 .flatMap(charm => charm.ranks)
+                 .find(rank => rank.name === name);
         }
-        try{
-            queryGroupSkills = setData
-                .filter(item => item.name === queryArmorSet)
-                .map(item => item.groupBonus).flat()
-                .map(item => item.skill).flat()
-                .map(item => `(E) - ${item.name}`).flat()
-        } catch (error) {
-            console.log('Armor has no Group Skills.');
-        }
-    };
-    queryArmorSkills.forEach((armorSkillValue, armorIndex) => {
-        if (armorSkillValue !== null && armorSkillValue !== undefined) {
-            const skillNum = armorIndex + 1;
-            const groupNum = Math.ceil(skillNum / 6);
-            const groupKey = `equipmentSkillGroup_${groupNum}`;
-            const skillKey = `equipmentSkill_${skillNum}`;
+    } catch (error) {
+        console.error(`Error finding item data for ${name} (${key}):`, error);
+    }
+    return null;
+});
 
-            if (equipmentSkills.value[groupKey] && equipmentSkills.value[groupKey].hasOwnProperty(skillKey)) {
-                equipmentSkills.value[groupKey][skillKey] = armorSkillValue;
-            }
-        }
-    });
-    
-    querySetSkills.forEach((setSkillValue, setIndex) => {
-      if (setSkillValue !== null && setSkillValue !== undefined) {
-        equipmentSkills.value["equipmentSkillGroup_3"]["setSkill"] = setSkillValue;
+const armorSetData = computed(() => {
+    if (API_ENDPOINTS[props.equipmentKey] !== 'armor' || !selectedItemData.value?.armorSet?.id || dataStore.isLoading) {
+        return null;
+    }
+    return dataStore.allArmorSetData.find(set => set.id === selectedItemData.value.armorSet.id);
+});
+
+const selectedDecorationsData = computed(() => {
+    if (dataStore.isLoading || !dataStore.allDecorationData) return [];
+
+    const decoMap = new Map(dataStore.allDecorationData.map(d => [d.name.slice(0, -4), d]));
+    const currentSelectedDecorations = selectedDecorations.value;
+    if (!Array.isArray(currentSelectedDecorations)) {
+        console.error(`EquipmentSkills (${props.equipmentKey}): selectedDecorationsData computed - Input is not an array! Aborting.`);
+        return [];
+    }
+
+    return currentSelectedDecorations
+        .filter(name => name !== null)
+        .map(name => decoMap.get(name))
+        .filter(deco => deco !== undefined);
+});
+
+const calculatedSkills = computed(() => {
+    const skills = getInitialSkillStructure();
+    let currentSkillIndex = 0;
+
+    const addSkill = (name, level, sourcePrefix, slotIndex = null) => {
+      let skillDisplayName = sourcePrefix;
+      if (sourcePrefix === '(D)' && slotIndex !== null) {
+          skillDisplayName += `${slotIndex + 1}`;
       }
-    });
+      skillDisplayName += ` - ${name}`;
 
-    queryGroupSkills.forEach((groupSkillValue, groupIndex) => {
-      if (groupSkillValue !== null && groupSkillValue !== undefined) {
-        equipmentSkills.value["equipmentSkillGroup_3"]["groupSkill"] = groupSkillValue;
+      if (sourcePrefix === '(G)') {
+          if (skills.equipmentSkillGroup_3) {
+              skills.equipmentSkillGroup_3.groupSkill = skillDisplayName;
+          }
+          return;
       }
-    });
 
-    let queryTalismanSkills = [];
+      if (sourcePrefix === '(S)') {
+          if (skills.equipmentSkillGroup_3) {
+              skills.equipmentSkillGroup_3.setSkill = skillDisplayName;
+          }
+          return;
+      }
 
-    if (['talisman'].includes(equipmentType)) {
-        queryTalismanSkills = equipmentSkillsData
-            .flatMap(item => item.ranks)
-            .filter(item => item.name === equipmentName)
-            .flatMap(item => item.skills)
-            .flatMap(skillInfo => Array(skillInfo.level).fill(`(E) - ${skillInfo.skill.name}`));
+      if (sourcePrefix === '(E)' || sourcePrefix.startsWith('(D')) {
+          for (let i = 0; i < level; i++) {
+              let placed = false;
+              while (currentSkillIndex < 16) {
+                  const groupNum = Math.floor(currentSkillIndex / 6) + 1;
+                  const skillNumInGroup = (currentSkillIndex % 6) + 1;
+                  const groupKey = `equipmentSkillGroup_${groupNum}`;
+                  const skillKey = `equipmentSkill_${currentSkillIndex + 1}`;
+
+                  if (skills[groupKey] && skills[groupKey].hasOwnProperty(skillKey) && skills[groupKey][skillKey] === '-') {
+                      skills[groupKey][skillKey] = skillDisplayName;
+                      placed = true;
+                      currentSkillIndex++;
+                      break;
+                  }
+                  currentSkillIndex++;
+              }
+
+              if (!placed) {
+                  break;              }
+          }
+      }
     };
 
-    queryTalismanSkills.forEach((talismanSkillValue, talismanIndex) => {
-        if (talismanSkillValue !== null && talismanSkillValue !== undefined) {
-            const skillNum = talismanIndex + 1;
-            const groupNum = Math.ceil(skillNum / 3);
-            const groupKey = `equipmentSkillGroup_${groupNum}`;
-            const skillKey = `equipmentSkill_${skillNum}`;
-
-            if (equipmentSkills.value[groupKey] && equipmentSkills.value[groupKey].hasOwnProperty(skillKey)) {
-                equipmentSkills.value[groupKey][skillKey] = talismanSkillValue;
+    if (selectedItemData.value?.skills) {
+        selectedItemData.value.skills.forEach(skillInfo => {
+            if (skillInfo.skill?.name) {
+                addSkill(skillInfo.skill.name, skillInfo.level, '(E)');
             }
+        });
+    }
+
+    const setBonusData = armorSetData.value?.bonus;
+    if (setBonusData) {
+        if (Array.isArray(setBonusData)) {
+            setBonusData.forEach(bonusInfo => {
+                if (bonusInfo?.skill?.name) {
+                    addSkill(bonusInfo.skill.name, 1, '(S)');
+                }
+            });
+        } else if (typeof setBonusData === 'object' && setBonusData !== null && setBonusData.skill?.name) {
+            addSkill(setBonusData.skill.name, 1, '(S)');
+        } else {
+             // console.warn(...) // Keep warning if needed
         }
-    });
-    
-    let queryWeaponSkills = [];
+    }
 
-    if (['weapon'].includes(equipmentType)) {
-        queryWeaponSkills = equipmentSkillsData
-            .filter(item => item.name === equipmentName)
-            .flatMap(item => item.skills)
-            .flatMap(skillInfo => Array(skillInfo.level).fill(`(E) - ${skillInfo.skill.name}`));
-    };
-
-    queryWeaponSkills.forEach((weaponSkillValue, weaponIndex) => {
-        if (weaponSkillValue !== null && weaponSkillValue !== undefined) {
-            const skillNum = weaponIndex + 1;
-            const groupNum = Math.ceil(skillNum / 3);
-            const groupKey = `equipmentSkillGroup_${groupNum}`;
-            const skillKey = `equipmentSkill_${skillNum}`;
-
-            if (equipmentSkills.value[groupKey] && equipmentSkills.value[groupKey].hasOwnProperty(skillKey)) {
-                equipmentSkills.value[groupKey][skillKey] = weaponSkillValue;
-            }
+     const groupBonusData = armorSetData.value?.groupBonus;
+    if (groupBonusData) {
+        if (Array.isArray(groupBonusData)) {
+            groupBonusData.forEach(bonusInfo => {
+                if (bonusInfo?.skill?.name) {
+                    addSkill(bonusInfo.skill.name, 1, '(G)');
+                }
+            });
+        } else if (typeof groupBonusData === 'object' && groupBonusData !== null && groupBonusData.skill?.name) {
+            addSkill(groupBonusData.skill.name, 1, '(G)');
+        } else {
+            // console.warn(...) // Keep warning if needed
         }
+    }
+
+    const validDecoNames = selectedDecorations.value.filter(name => name !== null);
+    const currentSelectedDecorationsData = selectedDecorationsData.value;
+    const decoDataMap = new Map(currentSelectedDecorationsData.map(d => [d.name.slice(0, -4), d]));
+
+    validDecoNames.forEach((name, index) => {
+         const originalSlotIndex = selectedDecorations.value.findIndex((n, i) => n === name && i >= index);
+         const decoData = decoDataMap.get(name);
+         if (decoData && decoData.skills) {
+             decoData.skills.forEach(skillInfo => {
+                 if (skillInfo.skill?.name) {
+                     addSkill(skillInfo.skill.name, skillInfo.level, '(D)', originalSlotIndex);
+                 }
+             });
+         } else if (name) {
+            // console.warn(...) // Keep warning if needed
+         }
     });
 
-    fetchingEquipmentSkills = false
-    equipmentSkillsEmitted.value = {
-      [props.selectedEquipmentType]: equipmentSkills.value
-    };
-  } catch (error) {
-    console.error('Error fetching equipment pieces:', error);
-  }
+    return skills;
+});
+
+function getInitialSkillStructure() {
+  return {
+    equipmentSkillGroup_1: { equipmentSkill_1: "-", equipmentSkill_2: "-", equipmentSkill_3: "-", equipmentSkill_4: "-", equipmentSkill_5: "-", equipmentSkill_6: "-" }, // Slots 1-6
+    equipmentSkillGroup_2: { equipmentSkill_7: "-", equipmentSkill_8: "-", equipmentSkill_9: "-", equipmentSkill_10: "-", equipmentSkill_11: "-", equipmentSkill_12: "-" }, // Slots 7-12
+    equipmentSkillGroup_3: { equipmentSkill_13: "-", equipmentSkill_14: "-", equipmentSkill_15: "-", equipmentSkill_16: "-", groupSkill: "-", setSkill: "-" } // Slots 13-16, Group(17), Set(18)
+  };
 }
 
-watch(
-  () => props.selectedDecorations,  (newDecorations) => {
-    return fetchDecorationSkills(newDecorations, props.selectedEquipmentType, props.selectedEquipmentName);
-  }
-);
+const displayedSkills = computed(() => {
+    return calculatedSkills.value;
+});
 
-async function fetchDecorationSkills(selectedDecorations, selectedEquipmentType, selectedEquipmentName) {
-  for (const groupKey in equipmentSkills.value) {
-    for (const skillKey in equipmentSkills.value[groupKey]) {
-      if (typeof equipmentSkills.value[groupKey][skillKey] === 'string' && equipmentSkills.value[groupKey][skillKey].startsWith("(D")) {
-        equipmentSkills.value[groupKey][skillKey] = "-";
-      }
+
+// Watchers
+watch(calculatedSkills, (newSkills, oldSkills) => {
+    if (JSON.stringify(newSkills) !== JSON.stringify(oldSkills)) {
+        buildStore.updatePieceSkills(props.equipmentKey, newSkills);
     }
-  }
+}, { deep: true, immediate: false });
 
-  try {
-    const decorationSkillsResponse = await fetch(`${props.api_baseUrl}decorations`);
-    const decorationSkillsData = await decorationSkillsResponse.json();
-    let queryDecorationSkills = [];
 
-    queryDecorationSkills = decorationSkillsData
-      .flatMap(item => {
-        let skills = [];
-        for (const slot in selectedDecorations) {
-          if (selectedDecorations[slot] === item.name.slice(0, -4)) {
-            const slotNumber = slot.split('_')[1];
-            const slotDisplay = `(D${slotNumber})`;
-            skills = skills.concat(item.skills.flatMap(skillInfo => Array(skillInfo.level).fill(`${slotDisplay} - ${skillInfo.skill.name}`))); // concat to add all to the same array
-          }
-        }
-        return skills;
-      });
-
-    queryDecorationSkills.sort().forEach((decorationSkillValue) => {
-      for (const groupKey in equipmentSkills.value) {
-        for (const skillKey in equipmentSkills.value[groupKey]) {
-          if (equipmentSkills.value[groupKey][skillKey] === "-") {
-            equipmentSkills.value[groupKey][skillKey] = decorationSkillValue;
-            equipmentSkills.value = { ...equipmentSkills.value };
-            return;
-          }
-        }
-      }
-    });
-  
-    equipmentSkillsEmitted.value = {
-      [props.selectedEquipmentType]: equipmentSkills.value
-    };
-  } catch (error) {
-    console.log('Decoration skills not found.');
-  }
+// Methods
+function formatSkillDisplay(skillName) {
+  if (!skillName || skillName === '-') return '-';
+  const match = skillName.match(/\)\s*-\s*(.*)/);
+  return match ? match[1].trim() : skillName;
 }
 
-watch(
-  () => equipmentSkillsEmitted.value,  () => {
-    if (fetchingEquipmentSkills === false ) {
-      emit(
-        'all-skills',
-        equipmentSkillsEmitted.value
-      )
-    }
-  }
-);
-
+// Helper method for dynamic class binding based on skill source
+function getSkillClass(skillName) {
+  if (!skillName || skillName === '-') return 'skill-empty';
+  if (skillName.startsWith('(E)')) return 'skill-equipment';
+  if (skillName.startsWith('(S)')) return 'skill-set';
+  if (skillName.startsWith('(G)')) return 'skill-group';
+  if (skillName.startsWith('(D')) return 'skill-decoration';
+  return '';
+}
 </script>
 
-<style scope>
+<style scoped>
+.equipmentSkills-vRow {
+   margin-bottom: 2px;
+}
+
 .equipmentSkills-vCol {
-    font-size: 11px;
-    font-weight: 1000;
+    font-size: 0.7rem;
+    font-weight: bold;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: 4px;
+    padding: 2px 4px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+    box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
 }
 
-/* .equipmentSkills-vImg-div-equipmentSkill {
-  background: radial-gradient(ellipse at center, rgba(240, 140, 130, 0.50) 60%, rgba(200, 60, 60, 0.75) 100%);
+.skill-chip {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.equipmentSkills-vImg-div-setSkill {
-  background: radial-gradient(ellipse at center, rgba(80, 150, 150, 0.50) 60%, rgba(25, 100, 100, 0.75) 100%);
+.skill-empty {
+  background-color: #e0e0e0;
+  color: #757575;
 }
 
-.equipmentSkills-vImg-div-groupSkill {
-  background: radial-gradient(ellipse at center, rgba(80, 70, 120, 0.50) 60%, rgba(50, 30, 70, 0.75) 100%);
-} */
+.skill-equipment {
+  background: linear-gradient(to bottom, #ffccbc, #ff8a65);
+  color: #4e342e;
+}
+
+.skill-set {
+  background: linear-gradient(to bottom, #b2ebf2, #4dd0e1);
+  color: #006064;
+}
+
+.skill-group {
+  background: linear-gradient(to bottom, #d1c4e9, #9575cd);
+  color: #311b92;
+}
+
+.skill-decoration {
+  background: linear-gradient(to bottom, #c8e6c9, #81c784);
+  color: #1b5e20;
+}
+
+.skill-background {
+  border-radius: 3px;
+  overflow: hidden;
+}
+.skill-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+.skill-placeholder {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   height: 18px;
+   color: #999;
+   font-size: 12px;
+}
 </style>

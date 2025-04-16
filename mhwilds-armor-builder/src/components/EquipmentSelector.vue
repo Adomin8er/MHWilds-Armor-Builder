@@ -1,142 +1,176 @@
 <template>
   <v-autocomplete
-    :label="props.equipmentPiece.replace('_',' ')"
+    :label="componentLabel"
     :items="equipmentOptions"
-    v-model="selectedEquipment[formattedEquipmentPiece]"
+    :loading="isLoading"
+    :disabled="isLoading || dataStore.isLoading"
+    v-model="selectedEquipmentName"
     variant="underlined"
     clearable
     hide-details="true"
-    :clear-icon="equipmentCardImages.icon_cancel"
-    :menu-icon="equipmentCardImages.icon_downArrow"
+    :clear-icon="Icon_Cancel"
+    :menu-icon="Icon_DownArrow"
   >
+    <template v-slot:no-data>
+      <v-list-item>
+        <v-list-item-title>
+          {{ noDataMessage }}
+        </v-list-item-title>
+      </v-list-item>
+    </template>
   </v-autocomplete>
 </template>
 
 <script setup>
+// Plugin Constants
+import { ref, computed, watch, onMounted } from 'vue';
+
+// Pinia Stores
+import { useDataStore } from '@/stores/data';
+import { useBuildStore } from '@/stores/build';
+import { ALL_EQUIPMENT_KEYS, API_ENDPOINTS, formatDisplayName } from '@/constants';
+
+// Import images
 import Icon_Cancel from '@/components/icons/Icon_Cancel.vue';
 import Icon_DownArrow from '@/components/icons/Icon_DownArrow.vue';
 
-import { onMounted, ref, watch } from 'vue';
-
+// Props
 const props = defineProps({
-  api_baseUrl: String,
-  equipmentPiece: String
-})
+  equipmentPiece: {
+    type: String,
+    required: true
+  }
+});
 
-const emit = defineEmits(['equipment-selected']);
+// Pinia Stores
+const dataStore = useDataStore();
+const buildStore = useBuildStore();
 
-const equipmentCardImages = {
-  icon_cancel: Icon_Cancel,
-  icon_downArrow: Icon_DownArrow
-};
-
-const equipmentEndpoints = {
-  "head": 'armor',
-  "chest": 'armor',
-  "arms": 'armor',
-  "waist": 'armor',
-  "legs": 'armor',
-  "talisman": 'charms',
-  "great-sword": 'weapons',
-  "long-sword": 'weapons',
-  "sword-shield": 'weapons',
-  "dual-blades": 'weapons',
-  "hammer": 'weapons',
-  "hunting-horn": 'weapons',
-  "lance": 'weapons',
-  "gunlance": 'weapons',
-  "switch-axe": 'weapons',
-  "charge-blade": 'weapons',
-  "insect-glaive": 'weapons',
-  "bow": 'weapons',
-  "light-bowgun": 'weapons',
-  "heavy-bowgun": 'weapons',  
-};
-
-const formattedEquipmentPiece = ref('');
+// Local Component States
 const equipmentOptions = ref([]);
-const selectedEquipment = ref({});
+const isLoading = ref(false);
 
-onMounted(() => {
-  initializeComponent();
+// Computed Properties
+const currentEquipmentKey = computed(() => {
+    const piece = props.equipmentPiece;
+    if (piece === 'Weapon') {
+        return props.equipmentPiece.toLowerCase().replace(/_/g, '-');
+    } else {
+        return piece.toLowerCase();
+    }
 });
 
-watch(() => props.equipmentPiece, () => {
-  initializeComponent();
+const componentLabel = computed(() => {
+    return formatDisplayName(props.equipmentPiece);
 });
 
-async function initializeComponent() {
-  const equipmentType = props.equipmentPiece.toLowerCase().replace("_","-");
-  formattedEquipmentPiece.value = equipmentType;
-  await fetchEquipment(equipmentType);
-}
+const selectedEquipmentName = computed({
+  get() {
+    const key = currentEquipmentKey.value;
+    return buildStore.selectedEquipment[key]?.name ?? null;
+  },
+  set(newValue) {
+    const key = currentEquipmentKey.value;
+    buildStore.updateSelectedEquipmentName(key, newValue);
+    if (newValue === null) {
+       buildStore.clearPieceData(key);
+    }
+  }
+});
 
-async function fetchEquipment(equipmentType) {
-  let endpoint = equipmentEndpoints[equipmentType];
+const noDataMessage = computed(() => {
+  if (dataStore.isLoading) {
+    return "Loading initial data...";
+  }
+  if (!currentEquipmentKey.value || !API_ENDPOINTS[currentEquipmentKey.value]) {
+      return `Invalid equipment type: ${props.equipmentPiece}`;
+  }
+  if (isLoading.value) {
+      return `Fetching ${componentLabel.value}...`;
+  }
+  if (equipmentOptions.value.length === 0) {
+      const endpoint = API_ENDPOINTS[currentEquipmentKey.value];
+      if (endpoint === 'armor' && dataStore.allArmorData.length === 0) return "Armor data not loaded.";
+      if (endpoint === 'weapons' && dataStore.allWeaponData.length === 0) return "Weapon data not loaded.";
+      if (endpoint === 'charms' && dataStore.allCharmData?.length === 0) return "Talisman data not loaded.";
+      return `No ${componentLabel.value} options found.`;
+  }
+  return "No data available";
+});
 
-  if (!endpoint) {
-    console.warn(`Unknown equipment type: ${equipmentType}`);
+// Functions
+function populateOptions() {
+  const key = currentEquipmentKey.value;
+  const endpoint = API_ENDPOINTS[key];
+
+  if (!endpoint || !key) {
+    console.warn(`Invalid equipment type or endpoint for key: ${key}`);
+    equipmentOptions.value = [];
     return;
   }
 
+  let options = [];
   try {
-    const response = await fetch(`${props.api_baseUrl}${endpoint}`);
-    const data = await response.json();
-    let options = [];
+    if (dataStore.isLoading) {
+        console.log(`Selector waiting for initial data load...`);
+        equipmentOptions.value = [];
+        return;
+    }
 
-    if (['head', 'chest', 'arms', 'waist', 'legs'].includes(equipmentType)) {
-      options = data
-        .filter(item => item.kind === equipmentType)
-        .map(item => item.name);
-    } else if (equipmentType === 'talisman') {
-      options = data.flatMap(item => item.ranks.map(rank => rank.name));
-    } else {
-      options = data
-        .filter(item => item.kind === equipmentType)
-        .map(item => item.name);
+    if (endpoint === 'armor') {
+      if (!dataStore.allArmorData || dataStore.allArmorData.length === 0) {
+          options = [];
+      } else {
+          options = dataStore.allArmorData
+            .filter(item => item.kind === key)
+            .map(item => item.name);
+      }
+    } else if (endpoint === 'weapons') {
+       if (!dataStore.allWeaponData || dataStore.allWeaponData.length === 0) {
+          options = [];
+       } else {
+         options = dataStore.allWeaponData
+            .filter(item => item.kind === key)
+            .map(item => item.name);
+       }
+    } else if (endpoint === 'charms') {
+      if (!dataStore.allCharmData || dataStore.allCharmData.length === 0) {
+          options = [];
+      } else {
+          options = dataStore.allCharmData.flatMap(item => item.ranks.map(rank => rank.name));
+      }
     }
 
     equipmentOptions.value = options.sort();
   } catch (error) {
-    console.error('Error fetching equipment pieces:', error);
+      console.error(`Error populating options for ${key}:`, error);
+      equipmentOptions.value = [];
+  } finally {
+      isLoading.value = false;
   }
-
-
-  watch(selectedEquipment, (newEquipment) => {
-    const correctedWeapon = {}
-    const equipmentType = Object.keys(newEquipment)[0];
-    const equipmentName = newEquipment[equipmentType];
-
-    if ([
-      'great-sword', 'long-sword', 'sword-shield', 'dual-blades', 'dual-blades',
-      'hammer', 'hunting-horn', 'lance', 'gunlance', 'switch-axe', 'charge-blade',
-      'insect-glaive', 'bow', 'light-bowgun', 'heavy-bowgun'
-    ].includes(equipmentType)) {
-      correctedWeapon['weapon'] = equipmentName
-    }
-
-    const head = newEquipment['head'] || null;
-    const chest = newEquipment['chest'] || null;
-    const arms = newEquipment['arms'] || null;
-    const waist = newEquipment['waist'] || null;
-    const legs = newEquipment['legs'] || null;
-    const talisman = newEquipment['talisman'] || null;
-    const weapon = correctedWeapon['weapon'] || null;
-    
-    emit(
-      'equipment-selected',
-      head,
-      chest,
-      arms,
-      waist,
-      legs,
-      talisman,
-      weapon
-    );
-  }, { deep: true }
-);
-
 }
+
+// Watchers
+
+watch(currentEquipmentKey, (newKey, oldKey) => {
+  populateOptions();
+}, { immediate: false });
+
+watch(() => dataStore.isLoading, (loading) => {
+    if (!loading && equipmentOptions.value.length === 0) {
+        console.log(`EquipmentSelector for ${props.equipmentPiece}: Initial data loaded. Populating options.`);
+        populateOptions();
+    }
+});
+
+// Lifecycle Hooks
+onMounted(() => {
+  if (!dataStore.isLoading) {
+    populateOptions();
+  } else {
+      console.log(`EquipmentSelector for ${props.equipmentPiece}: Waiting for initial data on mount...`);
+  }
+});
 </script>
 
 <style scoped>

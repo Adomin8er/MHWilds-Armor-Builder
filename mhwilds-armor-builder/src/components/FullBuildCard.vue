@@ -1,373 +1,318 @@
 <template>
-  <v-card
-    class="equipmentCard-vCard"
-    variant="outlined">
-    <v-slide-group
-    >
-      <v-card
-        height="316"
-        width="0"
-      >
-      </v-card>
-      <v-slide-group-item
-        v-for="skillData in appliedSkillsData"
-      >
-      <v-card
-        v-if="
-          (skillData.kind === 'armor' || skillData.kind === 'weapon')
-          || skillData.kind == 'group' && appliedSkills[skillData.name] >= 3
-          || skillData.kind == 'set' && appliedSkills[skillData.name] >= 2
-        "
-          class="position-relative elevation-5 ma-2"
-          variant="elevated"
-          width="225"
-          height="300"
-          :style="getCardBackgroundStyle(skillData.kind)"
+  <v-card variant="outlined" class="full-build-card">
+    <v-card-title class="text-center text-h6 bg-brown-darken-1">
+      Build Skill Summary
+    </v-card-title>
+    <v-divider></v-divider>
+
+    <v-card-text>
+      <v-row v-if="isLoading" justify="center" class="py-4">
+         <v-progress-circular indeterminate color="primary"></v-progress-circular>
+         <span class="ml-3">Loading skill definitions...</span>
+      </v-row>
+
+      <v-list v-else-if="skillDetailsList.length > 0" lines="two" density="compact">
+        <v-list-item
+          v-for="skill in skillDetailsList"
+          :key="skill.name"
+          class="skill-list-item"
         >
-          <template v-slot:title>
-            <span class="equipmentCard-vCard-title text-grey-lighten-1">{{ skillData.name }}</span>
-          </template>
-            
-          <template v-slot:subtitle>
-            
-              <span
-                v-if="skillData.kind == 'armor' || skillData.kind == 'weapon'"
-                class="text-wrap text-grey-lighten-3"
-              >
-                {{
-                  appliedSkills[skillData.name] <= skillData.ranks.length
-                  ? skillData.name + ' Lvl ' + appliedSkills[skillData.name]
-                  : skillData.name + ' Lvl ' + skillData.ranks.length
-                }}
-              </span>
-              <span
-                v-else-if="skillData.kind == 'group' && appliedSkills[skillData.name] >= 3"
-                class="text-wrap"
-              >
-                {{
-                  skillData.ranks[0].name + ' Lvl 1'
-                }}
-              </span>
-              <span
-                v-else-if="skillData.kind == 'set' && appliedSkills[skillData.name] >= 2"
-                class="text-wrap"
-              >
-                {{
-                  appliedSkills[skillData.name] <= 3
-                  ? skillData.ranks[0].name.slice(0,-2) + ' Lvl 1'
-                  : skillData.ranks[1].name.slice(0,-2) + ' Lvl 2'
-                }}
-              </span>
-          </template>
-          <template v-slot:text>
-            <div
-              style=
-                "
-                  height: 150px;
-                  border-radius: 10px;
-                  background-color: rgba(0, 0, 0, .6);
-                  pointer-events: none;
-                  padding: 10px;
-                  z-index: 1;
-                "
-            >
-              <span
-                class="text-wrap text-grey-lighten-2"
-              >
-                <span
-                >
-                  {{
-                    appliedSkills[skillData.name] <= skillData.ranks.length
-                    ? skillData.ranks[appliedSkills[skillData.name]-1].description
-                    : skillData.ranks[skillData.ranks.length-1].description
-                  }}
-                  <span
-                    class="text-red-lighten-1"
-                    v-if="
-                      (skillData.kind === 'armor' || skillData.kind === 'weapon')
-                      && appliedSkills[skillData.name] > skillData.ranks.length"
-                    style="display: block;"
-                  >
-                    Limit surpassed. ({{ appliedSkills[skillData.name] }} of {{ skillData.ranks.length }})
-                  </span>
-                </span>
-              </span>
+          <v-list-item-title class="font-weight-bold">
+            {{ skill.name }}
+
+            <span v-if="skill.type === 'normal'" :class="[
+                'level-display',
+                { 'max-level': skill.isMaxLevel },
+                { 'over-level': skill.isOverLevel }
+            ]">
+              Lv {{ skill.rawLevel }} / {{ skill.maxLevel }}
+            </span>
+
+            <span v-else-if="skill.type === 'set' || skill.type === 'group'" :class="[
+                'level-display',
+                'set-group-level-display',
+                { 'inactive-set-group': skill.activeLevel === 0 },
+                { 'active-set-group': skill.activeLevel > 0 && !skill.isFullyActive },
+                { 'max-set-group': skill.isFullyActive }
+            ]">
+              Lv {{ skill.activeLevel }} / {{ skill.maxLevel }}
+            </span>
+
+             <span v-else-if="skill.type === 'unknown'" class="level-display unknown-level">
+               Lv {{ skill.rawLevel }} / ?
+             </span>
+
+            <template v-if="skill.type === 'normal'">
+              <v-icon v-if="skill.isMaxLevel" color="amber" size="small" class="ml-1" title="Max Level">
+                mdi-star
+              </v-icon>
+              <v-icon v-else-if="skill.isOverLevel" color="error" size="small" class="ml-1" title="Over Maximum Level">
+                mdi-alert-circle-outline
+              </v-icon>
+            </template>
+
+            <template v-else-if="skill.type === 'set' || skill.type === 'group'">
+               <v-icon v-if="skill.activeLevel > 0"
+                 :color="skill.type === 'set' ? 'cyan-darken-1' : 'deep-purple-lighten-1'"
+                 size="small"
+                 class="ml-1"
+                 :title="skill.type === 'set' ? 'Set Bonus Active' : 'Group Bonus Active'"
+               >
+                 {{ skill.type === 'set' ? 'mdi-shield-star-outline' : 'mdi-account-group-outline' }}
+               </v-icon>
+                <v-icon v-if="skill.isFullyActive" color="amber" size="x-small" class="ml-1" title="Bonus Fully Active">
+                  mdi-star
+               </v-icon>
+            </template>
+          </v-list-item-title>
+
+          <v-list-item-subtitle class="skill-description">
+            {{ (skill.type === 'set' || skill.type === 'group')
+                ? (skill.definition?.ranks?.find(r => r.level === skill.activeLevel)?.description || skill.overallDescription || 'Description unavailable.')
+                : (skill.currentLevelDescription || skill.overallDescription || 'No description available.')
+            }}
+          </v-list-item-subtitle>
+
+          <v-tooltip activator="parent" location="bottom end" max-width="350px">
+            <div class="font-weight-bold mb-1">{{ skill.name }} Sources:</div>
+            <div v-if="skill.type === 'set' || skill.type === 'group'" class="mb-1 text-caption">
+                Contributing Pieces: {{ skill.pieceCount }}
             </div>
-          </template>
-          <v-card-text class="pa-4">
-            {{ appliedSkills.description }}
-          </v-card-text>
-          <div class="position-absolute bottom-0 w-100">
-            <div class="text-center text-caption text-wrap text-grey-lighten-2">Level</div>
-            <v-divider></v-divider>
-            <v-footer
-              class="fullCardBuild-vFooter pa-2 bg-transparent"
-            >
-              <v-row
-                v-for="skillName,index in skillData.ranks"
-                no-gutters class="justify-space-evenly"
-              >
-                <v-chip
-                  v-if="
-                    (skillData.kind === 'armor' || skillData.kind === 'weapon')
-                      && index == appliedSkills[skillData.name]-1
-                    || (skillData.kind === 'armor' || skillData.kind === 'weapon')
-                      && index == skillData.ranks.length-1
-                      && appliedSkills[skillData.name] > skillData.ranks.length
-                  "
-                  icon
-                  class="rounded-circle ms-1"
-                  style=
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #80600c 0%,
-                        #b8860b 25%,
-                        #e6c45d 50%,
-                        #b8860b 75%,
-                        #80600c 100%
-                      );
-                    "
-                  variant="flat"
-                >
-                </v-chip>
-                <v-chip
-                  v-else-if="
-                    (skillData.kind === 'armor' || skillData.kind === 'weapon')
-                    && index < appliedSkills[skillData.name]-1
-                  "
-                  icon
-                  class="rounded-circle ms-1"
-                  style= 
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #5a5a5a 0%,
-                        #a0a0a0 25%,
-                        #dcdcdc 50%,
-                        #a0a0a0 75%,
-                        #5a5a5a 100%
-                      );
-                    "
-                  variant="flat"
-                >
-                </v-chip>
-                <v-chip
-                  v-else-if="(skillData.kind === 'armor' || skillData.kind === 'weapon') && index > appliedSkills[skillData.name]-1"
-                  icon
-                  class="rounded-circle ms-1"
-                  style= 
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #4e2a04 0%,
-                        #8a4f22 25%,
-                        #b06b3b 50%,
-                        #8a4f22 75%,
-                        #4e2a04 100%
-                      );
-                    "
-                  variant="flat"
-                >
-                </v-chip>
-                <v-chip
-                  v-else-if="skillData.kind === 'group'"
-                  icon
-                  class="rounded-circle ms-1"
-                  style=
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #80600c 0%,
-                        #b8860b 25%,
-                        #e6c45d 50%,
-                        #b8860b 75%,
-                        #80600c 100%
-                      );
-                    "
-                  variant="flat"
-                >
-                </v-chip>
-                <v-chip
-                  v-else-if="skillData.kind === 'set' && index < Math.floor((appliedSkills[skillData.name]/2)-1)"
-                  icon
-                  class="rounded-circle ms-1"
-                  style= 
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #5a5a5a 0%,
-                        #a0a0a0 25%,
-                        #dcdcdc 50%,
-                        #a0a0a0 75%,
-                        #5a5a5a 100%
-                      );
-                    "
-                  variant="flat"
-                >
-                </v-chip>
-                <v-chip
-                  v-else-if="skillData.kind === 'set' && index == Math.floor((appliedSkills[skillData.name]/2)-1)"
-                  icon
-                  class="rounded-circle ms-1"
-                  style=
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #80600c 0%,
-                        #b8860b 25%,
-                        #e6c45d 50%,
-                        #b8860b 75%,
-                        #80600c 100%
-                      );
-                    "
-                  variant="flat"
-                >
-                </v-chip>
-                <v-chip
-                  v-else-if="skillData.kind === 'set' && index > Math.floor((appliedSkills[skillData.name]/2)-1)"
-                  icon
-                  class="rounded-circle ms-1"
-                  style=
-                    "
-                      width: 16px;
-                      height: 16px;
-                      background: linear-gradient(
-                        165deg,
-                        #80600c 0%,
-                        #b8860b 25%,
-                        #e6c45d 50%,
-                        #b8860b 75%,
-                        #80600c 100%
-                      );
-                    "
-                  variant="flat"
-                ></v-chip>
-              </v-row>
-            </v-footer>
-          </div>
-        </v-card>
-      </v-slide-group-item>
-    </v-slide-group>
+            <ul class="source-list">
+                <li v-for="source in skill.sources" :key="source">{{ source }}</li>
+            </ul>
+          </v-tooltip>
+        </v-list-item>
+      </v-list>
+
+      <v-row v-else justify="center" class="py-4 text-grey">
+        <v-icon left>mdi-information-outline</v-icon>
+        <span class="ml-2">No skills active in the current build.</span>
+      </v-row>
+    </v-card-text>
   </v-card>
 </template>
 
-
 <script setup>
-import Card_ArmorSkill from "@/assets/images/skills/Card_ArmorSkill.webp"
-import Card_WeaponSkill from "@/assets/images/skills/Card_WeaponSkill.webp"
-import Card_GroupSkill from "@/assets/images/skills/Card_GroupSkill.webp"
-import Card_SetSkill from "@/assets/images/skills/Card_SetSkill.webp"
+// Plugin Constants
+import { computed } from 'vue';
 
+// Pinia Stores
+import { useBuildStore } from '@/stores/build';
+import { useDataStore } from '@/stores/data';
 
-import { ref, watch } from 'vue';
+// Stores
+const buildStore = useBuildStore();
+const dataStore = useDataStore();
 
-const props = defineProps({
-    api_baseUrl: String,
-    allSkills: Object
+// Computed Properties
+const aggregatedSkills = computed(() => {
+  return (buildStore.totalSkills && typeof buildStore.totalSkills === 'object') ? buildStore.totalSkills : {};
 });
 
-const appliedSkills = ref({})
-const appliedSkillsData = ref([])
+const isLoading = computed(() => dataStore.isLoading);
 
-watch(
-  () => props.allSkills,
-  (updatedSkills) => {
-    const skills = Object.values(updatedSkills)
-      .flatMap(equipmentPiece => Object.values(equipmentPiece))
-      .flatMap(equipmentSkillGroup => Object.values(equipmentSkillGroup))
-      .filter(skill => skill !== "-")
-      .map(skill => skill.replace(/\(E\) -|\(D1\) -|\(D2\) -|\(D3\) -/g, "").trim());
+const skillDetailsList = computed(() => {
+  if (dataStore.isLoading || !dataStore.allSkillData || !aggregatedSkills.value) {
+    return [];
+  }
 
-    appliedSkills.value = skills.reduce((acc, skill) => {
-      acc[skill] = (acc[skill] || 0) + 1;
-      return acc;
-    }, {});
+  const skillDefinitionMap = new Map(
+    (dataStore.allSkillData || []).map(skill => [skill.name, skill])
+  );
 
-  fetchSkillData(appliedSkills.value);
-  },
-  { deep: true }
-);
+  const details = [];
 
-async function fetchSkillData(appliedSkillsObject) {
-  let temoporaryAppliedSkills = []
+  for (const skillName in aggregatedSkills.value) {
+    const aggregate = aggregatedSkills.value[skillName];
+    const definition = skillDefinitionMap.get(skillName);
 
-  await Promise.all(Object.keys(appliedSkillsObject).map(async skillName => {
-    try {
-      const skillResponse = await fetch(`${props.api_baseUrl}skills`);
-      const skillData = await skillResponse.json();
-      let querySkillsData = [];
+    const sourceTypesArray = aggregate?.sourceTypes || [];
+    const pieceCount = aggregate?.pieceCount ?? 0;
 
-      querySkillsData = skillData
-        .filter(item => item.name === skillName)
+    const isSetSkill = Array.isArray(sourceTypesArray) && sourceTypesArray.includes('set');
+    const isGroupSkill = Array.isArray(sourceTypesArray) && sourceTypesArray.includes('group');
 
-      temoporaryAppliedSkills.push(...querySkillsData)
-    } catch {
-      console.log("Unable to find skill information for:", skillName)
+    // Logic for pushing Set/Group skills (no change here)
+    if (isSetSkill || isGroupSkill) {
+      let calculatedActiveLevel = 0;
+      let calculatedMaxLevel = 0;
+      let isFullyActive = false;
+
+      if (isGroupSkill) {
+        calculatedMaxLevel = 1;
+        if (pieceCount >= 3) {
+          calculatedActiveLevel = 1;
+          isFullyActive = true;
+        }
+      } else { // isSetSkill
+        calculatedMaxLevel = 2; // Assuming max 2 levels for set skills, adjust if needed
+        if (pieceCount >= 4) { // Threshold for level 2
+          calculatedActiveLevel = 2;
+          isFullyActive = true;
+        } else if (pieceCount >= 2) { // Threshold for level 1
+          calculatedActiveLevel = 1;
+        }
+      }
+
+      details.push({
+        name: skillName,
+        type: isSetSkill ? 'set' : 'group',
+        activeLevel: calculatedActiveLevel,
+        maxLevel: calculatedMaxLevel,
+        isFullyActive: isFullyActive,
+        overallDescription: definition?.description || 'Description unavailable.',
+        sources: aggregate.sources || [],
+        pieceCount: pieceCount,
+        definition: definition
+      });
+
+    // Logic for pushing Normal skills (no change here)
+    } else if (definition && definition.ranks && definition.ranks.length > 0) {
+      const maxLevel = definition.ranks.length;
+      const rawLevel = aggregate.level || 0;
+      const isOverLevel = rawLevel > maxLevel;
+      const isMaxLevel = rawLevel === maxLevel;
+      const cappedLevel = Math.min(rawLevel, maxLevel);
+      const currentLevelDescription = definition.ranks.find(rank => rank.level === cappedLevel)?.description;
+
+      details.push({
+        name: skillName,
+        type: 'normal', // Assign type explicitly
+        rawLevel: rawLevel,
+        currentLevel: cappedLevel,
+        maxLevel: maxLevel,
+        isMaxLevel: isMaxLevel,
+        isOverLevel: isOverLevel,
+        overallDescription: definition.description,
+        currentLevelDescription: currentLevelDescription,
+        sources: aggregate.sources || [],
+        pieceCount: pieceCount,
+        definition: definition
+      });
+
+    // Logic for pushing Unknown skills (no change here)
+    } else {
+      details.push({
+        name: `${skillName} ${definition ? '' : '(Unknown)'}`,
+        type: 'unknown', // Assign type explicitly
+        rawLevel: aggregate.level || 0,
+        currentLevel: aggregate.level || 0,
+        maxLevel: '?',
+        isMaxLevel: false,
+        isOverLevel: false,
+        overallDescription: definition?.description || 'Definition not found.',
+        currentLevelDescription: 'Level details unavailable.',
+        sources: aggregate.sources || [],
+        pieceCount: pieceCount,
+        definition: definition
+      });
     }
-  }))
-  appliedSkillsData.value = temoporaryAppliedSkills.sort((a, b) => {
-    const kindOrder = { armor: 1, weapon: 1, group: 2, set: 3 };
-    const kindA = kindOrder[a.kind];
-    const kindB = kindOrder[b.kind];
+  }
 
-    if (kindA !== kindB) {
-      return kindA - kindB;
+  details.sort((a, b) => {
+    const typeOrder = {
+      normal: 0,
+      unknown: 0,
+      group: 1,
+      set: 2,
+    };
+
+    const typeA = typeOrder[a.type];
+    const typeB = typeOrder[b.type];
+
+    if (typeA !== typeB) {
+      return typeA - typeB;
     }
 
     return a.name.localeCompare(b.name);
   });
-  console.log(appliedSkillsData.value)
-}
-
-function getCardBackgroundStyle(kind) {
-  switch (kind) {
-    case 'armor':
-      return {
-        backgroundImage: `url(${Card_ArmorSkill})`,
-        backgroundSize: 'cover'
-      };
-    case 'weapon':
-      return {
-        backgroundImage: `url(${Card_WeaponSkill})`,
-        backgroundSize: 'cover'
-      };
-    case 'group':
-      return {
-        backgroundImage: `url(${Card_GroupSkill})`,
-        backgroundSize: 'cover'
-      };
-    case 'set':
-      return {
-        backgroundImage: `url(${Card_SetSkill})`,
-        backgroundSize: 'cover'
-      };
-    default:
-      return {
-        background: 'white'
-      };
-  }
-}
+  
+  return details;
+});
 </script>
 
-<style scope>
-.equipmentCard-vCard {
-  width: 100vw;
+<style scoped>
+.full-build-card {
+  width: 100%;
 }
-.equipmentCard-vCard-title {
-  font-size: 18px;
-  font-weight: 800;
+
+.skill-list-item {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
+
+.skill-list-item:last-child {
+  border-bottom: none;
+}
+
+.level-display {
+  display: inline-block; 
+  font-size: 0.85em;
+  font-weight: normal;
+  color: #616161; 
+  margin-left: 8px;
+  background-color: #f5f5f5; 
+  padding: 1px 6px;
+  border-radius: 10px; 
+  vertical-align: middle; 
+  transition: background-color 0.3s, color 0.3s;
+  line-height: 1.4; 
+}
+
+.level-display.inactive-set-group {
+    color: #9e9e9e; 
+    background-color: #eeeeee; 
+    font-style: italic;
+}
+
+.level-display.active-set-group {
+    color: #424242;
+    background-color: #e0e0e0;
+    font-weight: bold;
+}
+
+.level-display.max-set-group {
+    color: #c28f0a; 
+    background-color: #fff8e1; 
+    font-weight: bold;
+}
+
+.level-display.max-level {
+  color: #c28f0a;
+  background-color: #fff8e1;
+  font-weight: bold;
+}
+
+.level-display.over-level {
+  color: #ffffff; 
+  background-color: #e53935; 
+  font-weight: bold;
+}
+
+.level-display.unknown-level {
+    color: #757575;
+    background-color: #f5f5f5;
+    font-style: italic;
+}
+
+.skill-description {
+  font-size: 0.8rem;
+  color: #424242;
+  white-space: normal;
+  padding-top: 2px;
+  line-height: 1.3;
+}
+
+.source-list {
+    list-style: none;
+    padding-left: 0;
+    font-size: 0.75rem;
+    color: #eeeeee; 
+}
+.source-list li {
+    margin-bottom: 2px;
+}
+
 </style>
