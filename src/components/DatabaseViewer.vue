@@ -534,14 +534,14 @@
             shells: weapon.shell
               ? `${weapon.shell.charAt(0).toUpperCase() + weapon.shell.slice(1)} <br> Lvl ${weapon.shellLevel || '?'}`
               : '-',
-            saPhials:
-              weapon.phial?.kind
-              ? weapon.phial.kind.charAt(0).toUpperCase() + weapon.phial.kind.slice(1)
-              : '-',
-            cbPhials:
-              weapon.phial
-              ? weapon.phial.charAt(0).toUpperCase() + weapon.phial.slice(1)
-              : '-',
+            // saPhials:
+            //   weapon.phial?.kind
+            //   ? weapon.phial?.kind.charAt(0).toUpperCase() + weapon.phial?.kind.slice(1)
+            //   : '-',
+            // cbPhials:
+            //   weapon.phial
+            //   ? weapon.phial.charAt(0).toUpperCase() + weapon.phial.slice(1)
+            //   : '-',
             kinsectLvl: weapon.kinsectLevel || '-',
             skills: weapon.skills?.map(s => `${s.skill.name} Lvl ${s.level}`).join('<br>') || '-',
           };
