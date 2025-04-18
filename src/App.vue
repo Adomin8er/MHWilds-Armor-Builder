@@ -77,7 +77,6 @@ import DatabaseViewer from '@/components/DatabaseViewer.vue';
 
 // Icons
 import Icon_ArtifactLookup from './components/icons/Icon_ArtifactLookup.vue';
-import Logo_MHWildsArmorBuilder from '@/assets/images/logos/Logo_MHWildsArmorBuilder.svg';
 
 // Use Pinia Stores
 const dataStore = useDataStore();
