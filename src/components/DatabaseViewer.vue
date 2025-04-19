@@ -4,20 +4,20 @@
       <v-btn icon="mdi-close" variant="text" size="small" @click="uiStore.hideDatabaseViewer()"
         style="position: absolute; top: 8px; right: 8px; z-index: 1;"></v-btn>
 
-        <v-btn-toggle
-          v-model="selectedDataTypeIndex"
-          divided
-          mandatory
-          rounded="xl"
-          variant="text"
-          color="primary"
-          class="responsive-btn-toggle border mb-2"
-        >
-          <v-btn>Armors</v-btn>
-          <v-btn>Weapons</v-btn>
-          <v-btn>Decorations</v-btn>
-          <v-btn>Skills</v-btn>
-        </v-btn-toggle>
+      <v-btn-toggle
+        v-model="selectedDataTypeIndex"
+        divided
+        mandatory
+        rounded="xl"
+        variant="text"
+        color="primary"
+        class="responsive-btn-toggle border mb-2"
+      >
+        <v-btn>Armors</v-btn>
+        <v-btn>Weapons</v-btn>
+        <v-btn>Decorations</v-btn>
+        <v-btn>Skills</v-btn>
+      </v-btn-toggle>
 
       <v-autocomplete v-if="selectedDataTypeIndex === 1" v-model="selectedWeapon" label="Weapon Type"
         :items="weaponNames" variant="underlined" width="200">
@@ -28,22 +28,30 @@
 
       <v-progress-circular v-if="dataStore.isLoading && currentItems.length === 0" indeterminate color="primary"
         class="my-10"></v-progress-circular>
-
       <v-alert v-else-if="dataStore.error" type="warning" density="compact" class="my-4">
         Could not load data: {{ dataStore.error }}
       </v-alert>
 
       <v-data-table-virtual v-else :headers="currentHeaders" :items="currentItems" :search="search" fixed-header
         height="400" item-value="key" density="compact" class="data-table-full-width">
+
         <template v-slot:item.name="{ item }">
-          <span class="weapon-column-name font-weight-medium">{{ item.name }}</span>
+          <span class="item-column-name font-weight-medium">{{ item.name }}</span>
         </template>
-        <template v-slot:item.levelDescription="{ item }">
-          <span style="font-size: 0.8rem;">{{ item.levelDescription }}</span>
+
+         <template v-slot:item.levelDescription="{ item }">
+          <span class="skill-column-level-desc" style="font-size: 0.8rem;">{{ item.levelDescription }}</span>
         </template>
-        <template v-slot:item.skills="{ item }">
-          <span class="weapon-column-skills" v-html="item.skills"></span>
-        </template>
+
+        <template v-slot:item.skillData="{ item }">
+           <div v-if="item.skillData && item.skillData.length > 0" class="skills-column">
+             <div v-for="skillItem in item.skillData" :key="skillItem.skill.id || skillItem.skill.name" class="skill-entry">
+               {{ skillItem.skill.name }} Lvl {{ skillItem.level }}
+             </div>
+           </div>
+           <span v-else>-</span>
+         </template>
+
         <template v-slot:item.sharpness="{ item }">
           <div class="sharpness-bar-container "
             style=" display: flex; align-items: center; justify-content: center; height: 10px; width: 100px; overflow: hidden; background-color: #000000;">
@@ -53,239 +61,190 @@
             </div>
           </div>
         </template>
+
         <template v-if="selectedWeapon === 'Hunting-horn'" v-slot:item.notes="{ item }">
-          <span class="weapon-column-notes d-inline-flex align-center bg-black rounded-pill pa-1">
+           <span v-if="item.notes" class="weapon-column-notes d-inline-flex align-center bg-black rounded-pill pa-1">
             <template v-for="(color, index) in item.notes.notes" :key="index">
               <v-icon icon="mdi-music-note" :color="color"></v-icon>
             </template>
           </span>
+          <span v-else>-</span>
+          <v-menu v-if="item.notes && (item.notes.echoBubble !== '-' || item.notes.echoWave !== '-')" location="top" open-on-click :close-on-content-click="false">
+             <template v-slot:activator="{ props }">
+               <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
+                 <v-icon icon="mdi-information-slab-circle-outline"></v-icon>
+               </span>
+             </template>
+             <v-sheet rounded="lg" class="pa-2" elevation="2" color="grey-lighten-2">
+               <div v-for="(song, color) in item.notes.songs" :key="song.name">
+                 <span>{{ song.name }}: </span>
+                 <div class="d-inline-flex align-center bg-black rounded-pill mt-1 mb-1 pl-1 pr-1">
+                   <span v-for="(color, idx) in song.sequence" :key="idx">
+                     <v-icon icon="mdi-music-note" :color="color">
+                     </v-icon>
+                   </span>
+                 </div>
+               </div>
+                <v-divider v-if="item.notes.echoBubble !== '-' || item.notes.echoWave !== '-'" class="ma-2" thickness="2" />
+               <div v-if="item.notes.echoBubble !== '-'"> Echo Bubble: {{ item.notes.echoBubble }}</div>
+               <div v-if="item.notes.echoWave !== '-'"> Echo Wave: {{ item.notes.echoWave }}</div>
+             </v-sheet>
+           </v-menu>
+        </template>
 
-          <v-menu location="top" open-on-click :close-on-content-click="false">
-            <template v-slot:activator="{ props }">
-              <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;"> <!-- Added cursor pointer for desktop -->
-                <v-icon icon="mdi-information-slab-circle-outline"></v-icon>
-              </span>
-            </template>
+        <template v-if="selectedWeapon === 'Gunlance'" v-slot:item.shellInfo="{ item }">
+          <span v-if="item.shellInfo">
+              {{ item.shellInfo.type }} Lvl {{ item.shellInfo.level }}
+          </span>
+          <span v-else>-</span>
+        </template>
 
-            <v-sheet rounded="lg" class="pa-2" elevation="2" color="grey-lighten-2">
-              <div v-for="song in item.notes.songs" :key="song">
-                <span>{{ song.split(': ')[1] }}: </span>
-                <div class="d-inline-flex align-center bg-black rounded-lg mt-1 mb-1 pl-1 pr-1">
-                  <span v-for="color in song.split(': ')[0].split(',')">
-                    <v-icon icon="mdi-music-note" :color="color">
-                    </v-icon>
-                  </span>
+        <template v-if="selectedWeapon === 'Switch-axe' || selectedWeapon === 'Charge-blade'" v-slot:item.phials="{ item }">
+           <span>{{ item.phials }}</span>
+         </template>
+
+         <template v-if="selectedWeapon === 'Insect-glaive'" v-slot:item.kinsectLvl="{ item }">
+           <span>{{ item.kinsectLvl }}</span>
+         </template>
+
+         <template v-if="selectedWeapon === 'Bow'" v-slot:item.coatings="{ item }">
+             <div v-if="item.coatings" class="weapon-column-coatings d-flex align-center justify-center">
+                <div class="align-center bg-black rounded-lg ml-5 pa-1">
+                  <div>
+                    <template v-for="(color, coatingName, index) in item.coatings" :key="`${coatingName}-1`">
+                      <v-icon v-if="index <= 3" icon="mdi-bottle-tonic" :color="color"></v-icon>
+                    </template>
+                  </div>
+                  <div>
+                    <template v-for="(color, coatingName, index) in item.coatings">
+                      <v-icon v-if="index >= 4" icon="mdi-bottle-tonic" :color="color"></v-icon>
+                    </template>
+                  </div>
                 </div>
-              </div>
-              <v-divider class="ma-2" thickness="2" />
-              <div> Echo Bubble: {{ item.notes.echoBubble }}</div>
-              <div> Echo Wave: {{ item.notes.echoWave }}</div>
-            </v-sheet>
-          </v-menu>
-        </template>
-        <template v-slot:item.shells="{ item }">
-          <span v-html="item.shells"></span>
-        </template>
-        <template v-if="selectedWeapon === 'Bow'" v-slot:item.coatings="{ item }">
-          <div class="weapon-column-coatings d-flex align-center justify-center">
-            <div class="align-center bg-black rounded-lg ml-5 pa-1">
-              <!-- Coating Icons -->
-              <div>
-                <template v-for="(color, coatingName, index) in item.coatings" :key="`${coatingName}-1`">
-                  <v-icon v-if="index <= 3" icon="mdi-bottle-tonic" :color="color">
-                  </v-icon>
-                </template>
-              </div>
-              <div>
-                <template v-for="(color, coatingName, index) in item.coatings">
-                  <v-icon v-if="index >= 4" icon="mdi-bottle-tonic" :color="color">
-                  </v-icon>
-                </template>
-              </div>
-            </div>
+                 <v-menu location="top" open-on-click :close-on-content-click="false">
+                    <template v-slot:activator="{ props }">
+                        <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
+                            <v-icon icon="mdi-information-slab-circle-outline"></v-icon>
+                        </span>
+                    </template>
+                    <v-sheet rounded="lg" class="pa-2" elevation="2" color="grey-lighten-2">
+                        <span>{{ Object.entries(item.coatings).filter(([_, color]) => color !== '#ffffff').map(([name, _]) => name).join(', ') || 'No Coatings Available' }}</span>
+                    </v-sheet>
+                 </v-menu>
+             </div>
+             <span v-else>-</span>
+         </template>
 
-            <v-menu location="top" open-on-click :close-on-content-click="false">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
-                  <v-icon icon="mdi-information-slab-circle-outline">
-                  </v-icon>
-                </span>
-              </template>
-
-              <v-sheet rounded="lg" class="pa-2" elevation="2" color="grey-lighten-2">
-                <span>
-                  {{
-                    Object.entries(item.coatings)
-                      .filter(([_, color]) => color !== '#ffffff')
-                      .map(([name, _]) => name)
-                      .join(', ') || 'No Coatings Available'
-                  }}
-                </span>
-              </v-sheet>
-            </v-menu>
-          </div>
-        </template>
         <template v-if="selectedWeapon === 'Light-bowgun'" v-slot:item.lbgRapid="{ item }">
-          <div class="weapon-column-lbgrapid d-flex align-center justify-center">
-            <div class="bg-black rounded-lg ml-5 pa-1" style="line-height: 0.8;">
-              <!-- Rapid Icons -->
-              <div class="justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.lbgRapid">
-                  <v-icon v-if="index <= 8" :key="`${item.key}-ammo1-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-              <div class="d-flex justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.lbgRapid">
-                  <v-icon v-if="index >= 9 && index <= 17" :key="`${item.key}-ammo2-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-              <div class="d-flex justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.lbgRapid">
-                  <v-icon v-if="index >= 20" :key="`${item.key}-ammo2-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-            </div>
-
-            <v-menu location="top" open-on-click :close-on-content-click="false">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
-                  <v-icon icon="mdi-information-slab-circle-outline">
-                  </v-icon>
-                </span>
-              </template>
-
-              <v-sheet rounded="lg" class="pa-2" elevation="2" color="grey-lighten-2">
-                <div>
-                  <div v-for="(rapidInfo, rapidName) in item.lbgRapid" :key="`${item.key}-tt-${rapidName}`">
-                    <template v-if="rapidInfo.details">
-                      <span :style="{ color: rapidInfo.color !== '#ffffff' ? rapidInfo.color : 'inherit' }">
-                        {{ rapidName }}
-                      </span>
+           <div v-if="item.lbgRapid" class="weapon-column-lbgrapid d-flex align-center justify-center">
+               <div class="bg-black rounded-lg ml-5 pa-1" style="line-height: 0.8;">
+                   <div class="justify-start">
+                       <template v-for="(ammoInfo, ammoName, index) in item.lbgRapid">
+                           <v-icon v-if="ammoInfo.color !== '#ffffff'" :key="`${item.key}-rapid1-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                       </template>
+                   </div>
+               </div>
+               <v-menu location="top" open-on-click :close-on-content-click="false">
+                    <template v-slot:activator="{ props }">
+                        <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
+                            <v-icon icon="mdi-information-slab-circle-outline"></v-icon>
+                        </span>
                     </template>
-                  </div>
-                  <div v-if="Object.values(item.lbgRapid).every(info => !info.details)">
-                      No Rapid Fire Ammo
-                  </div>
-                </div>
-              </v-sheet>
-            </v-menu>
-          </div>
+                    <v-sheet rounded="lg" class="pa-2" elevation="2" color="grey-lighten-2">
+                       <div>
+                            <div v-for="(rapidInfo, rapidName) in item.lbgRapid" :key="`${item.key}-tt-${rapidName}`">
+                                <template v-if="rapidInfo.details"> <span :style="{ color: rapidInfo.color !== '#ffffff' ? rapidInfo.color : 'inherit' }">{{ rapidName }}</span> </template>
+                            </div>
+                            <div v-if="Object.values(item.lbgRapid).every(info => !info.details)"> No Rapid Fire Ammo </div>
+                       </div>
+                    </v-sheet>
+                </v-menu>
+            </div>
+            <span v-else>-</span>
         </template>
+
         <template v-if="selectedWeapon === 'Light-bowgun'" v-slot:item.lbgMagazine="{ item }">
-          <div class="weapon-column-lbgmagazine d-flex align-center justify-center">
-            <div class="bg-black rounded-lg ml-5 pa-1" style="line-height: 0.8;">
-              <!-- Magazine Icons -->
-              <div class="justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.lbgMagazine">
-                  <v-icon v-if="index <= 8" :key="`${item.key}-ammo1-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-              <div class="d-flex justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.lbgMagazine">
-                  <v-icon v-if="index >= 9 && index <= 17" :key="`${item.key}-ammo2-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-              <div class="d-flex justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.lbgMagazine">
-                  <v-icon v-if="index >= 20" :key="`${item.key}-ammo2-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-            </div>
-
-            <v-menu location="top" open-on-click :close-on-content-click="false">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
-                  <v-icon icon="mdi-information-slab-circle-outline">
-                  </v-icon>
-                </span>
-              </template>
-
-              <v-sheet rounded="lg" class="pa-2" elevation="2" style="max-height: 250px; overflow-y: auto;" color="grey-lighten-2"> <!-- Added scroll if needed -->
-                <div>
-                  <div v-for="(ammoInfo, ammoName) in item.lbgMagazine" :key="`${item.key}-tt-${ammoName}`">
-                    <template v-if="ammoInfo.details">
-                      <span :style="{ color: ammoInfo.color !== '#ffffff' ? ammoInfo.color : 'inherit' }">
-                        {{ ammoName }} Lvl {{ ammoInfo.details.level }}
-                      </span>
-                      <span>
-                        ({{ ammoInfo.details.capacity }})
-                      </span>
+            <div v-if="item.lbgMagazine" class="weapon-column-lbgmagazine d-flex align-center justify-center">
+               <div class="bg-black rounded-lg ml-5 pa-1" style="line-height: 0.8;">
+                   <div class="justify-start">
+                      <template v-for="(ammoInfo, ammoName, index) in item.lbgMagazine">
+                          <v-icon v-if="index <= 8" :key="`${item.key}-mag1-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                      </template>
+                   </div>
+                    <div class="d-flex justify-start">
+                       <template v-for="(ammoInfo, ammoName, index) in item.lbgMagazine">
+                           <v-icon v-if="index >= 9 && index <= 17" :key="`${item.key}-mag2-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                       </template>
+                   </div>
+                   <div class="d-flex justify-start">
+                       <template v-for="(ammoInfo, ammoName, index) in item.lbgMagazine">
+                           <v-icon v-if="index >= 20" :key="`${item.key}-mag3-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                       </template>
+                   </div>
+               </div>
+                <v-menu location="top" open-on-click :close-on-content-click="false">
+                    <template v-slot:activator="{ props }">
+                         <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
+                            <v-icon icon="mdi-information-slab-circle-outline"></v-icon>
+                        </span>
                     </template>
-                  </div>
-                  <div v-if="Object.values(item.lbgMagazine).every(info => !info.details)">
-                      No Ammo Data
-                  </div>
-                </div>
-              </v-sheet>
-            </v-menu>
-          </div>
+                    <v-sheet rounded="lg" class="pa-2" elevation="2" style="max-height: 250px; overflow-y: auto;" color="grey-lighten-2">
+                        <div>
+                            <div v-for="(ammoInfo, ammoName) in item.lbgMagazine" :key="`${item.key}-tt-${ammoName}`">
+                                <template v-if="ammoInfo.details">
+                                    <span :style="{ color: ammoInfo.color !== '#ffffff' ? ammoInfo.color : 'inherit' }"> {{ ammoName }} Lvl {{ ammoInfo.details.level }} </span>
+                                    <span> ({{ ammoInfo.details.capacity }})</span>
+                                </template>
+                            </div>
+                            <div v-if="Object.values(item.lbgMagazine).every(info => !info.details)"> No Ammo Data </div>
+                        </div>
+                    </v-sheet>
+                </v-menu>
+            </div>
+            <span v-else>-</span>
         </template>
+
         <template v-if="selectedWeapon === 'Heavy-bowgun'" v-slot:item.hbgMagazine="{ item }">
-          <div class="weapon-column-hbgmagazine d-flex align-center justify-center">
-            <div class="bg-black rounded-lg ml-5 pa-1" style="line-height: 0.8;">
-              <div class="justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.hbgMagazine">
-                  <v-icon v-if="index <= 8" :key="`${item.key}-ammo1-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-              <div class="d-flex justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.hbgMagazine">
-                  <v-icon v-if="index >= 9 && index <= 17" :key="`${item.key}-ammo2-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-              <div class="d-flex justify-start">
-                <template v-for="(ammoInfo, ammoName, index) in item.hbgMagazine">
-                  <v-icon v-if="index >= 20" :key="`${item.key}-ammo2-${ammoName}`" icon="mdi-bullet"
-                    :color="ammoInfo.color" class="mx-n1">
-                  </v-icon>
-                </template>
-              </div>
-            </div>
-
-            <v-menu location="top" open-on-click :close-on-content-click="false">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
-                  <v-icon icon="mdi-information-slab-circle-outline">
-                  </v-icon>
-                </span>
-              </template>
-
-              <v-sheet rounded="lg" class="pa-2" elevation="2" style="max-height: 250px; overflow-y: auto;" color="grey-lighten-2"> <!-- Added scroll if needed -->
-                <div>
-                  <div v-for="(ammoInfo, ammoName) in item.hbgMagazine" :key="`${item.key}-tt-${ammoName}`">
-                    <template v-if="ammoInfo.details">
-                      <span :style="{ color: ammoInfo.color !== '#ffffff' ? ammoInfo.color : 'inherit' }">
-                        {{ ammoName }} Lvl {{ ammoInfo.details.level }}
-                      </span>
-                      <span>
-                        ({{ ammoInfo.details.capacity }})
-                      </span>
+           <div v-if="item.hbgMagazine" class="weapon-column-hbgmagazine d-flex align-center justify-center">
+               <div class="bg-black rounded-lg ml-5 pa-1" style="line-height: 0.8;">
+                    <div class="justify-start">
+                      <template v-for="(ammoInfo, ammoName, index) in item.hbgMagazine">
+                          <v-icon v-if="index <= 8" :key="`${item.key}-mag1-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                      </template>
+                   </div>
+                    <div class="d-flex justify-start">
+                       <template v-for="(ammoInfo, ammoName, index) in item.hbgMagazine">
+                           <v-icon v-if="index >= 9 && index <= 17" :key="`${item.key}-mag2-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                       </template>
+                   </div>
+                   <div class="d-flex justify-start">
+                       <template v-for="(ammoInfo, ammoName, index) in item.hbgMagazine">
+                           <v-icon v-if="index >= 20" :key="`${item.key}-mag3-${ammoName}`" icon="mdi-bullet" :color="ammoInfo.color" class="mx-n1"></v-icon>
+                       </template>
+                   </div>
+               </div>
+                <v-menu location="top" open-on-click :close-on-content-click="false">
+                    <template v-slot:activator="{ props }">
+                        <span v-bind="props" class="d-inline-flex align-center ml-1" style="cursor: pointer;">
+                            <v-icon icon="mdi-information-slab-circle-outline"></v-icon>
+                        </span>
                     </template>
-                  </div>
-                    <div v-if="Object.values(item.hbgMagazine).every(info => !info.details)">
-                      No Ammo Data
-                    </div>
-                </div>
-              </v-sheet>
-            </v-menu>
-          </div>
+                    <v-sheet rounded="lg" class="pa-2" elevation="2" style="max-height: 250px; overflow-y: auto;" color="grey-lighten-2">
+                        <div>
+                            <div v-for="(ammoInfo, ammoName) in item.hbgMagazine" :key="`${item.key}-tt-${ammoName}`">
+                               <template v-if="ammoInfo.details">
+                                   <span :style="{ color: ammoInfo.color !== '#ffffff' ? ammoInfo.color : 'inherit' }"> {{ ammoName }} Lvl {{ ammoInfo.details.level }} </span>
+                                   <span>({{ ammoInfo.details.capacity }})</span>
+                               </template>
+                            </div>
+                            <div v-if="Object.values(item.hbgMagazine).every(info => !info.details)"> No Ammo Data </div>
+                        </div>
+                    </v-sheet>
+                </v-menu>
+            </div>
+            <span v-else>-</span>
         </template>
+
       </v-data-table-virtual>
 
     </v-sheet>
@@ -301,8 +260,6 @@ import { useUiStore } from '@/stores/ui';
 import { useDataStore } from '@/stores/data';
 import { WEAPON_TYPE_KEYS } from '@/constants';
 
-// Import Images
-
 // Local Stores
 const uiStore = useUiStore();
 const dataStore = useDataStore();
@@ -310,7 +267,7 @@ const dataStore = useDataStore();
 // Local Data / Mappings
 const search = ref('');
 
-const selectedDataTypeIndex = ref(0); // 0: Armors, 1:Weapons, 2: Decorations, 3: Skills 
+const selectedDataTypeIndex = ref(0); // 0: Armors, 1:Weapons, 2: Decorations, 3: Skills
 const dataTypes = ['Armors', 'Weapons', 'Decorations', 'Skills'];
 const selectedDatatable = computed(() => dataTypes[selectedDataTypeIndex.value]);
 const weaponNames = Object.values(WEAPON_TYPE_KEYS).map(name => {
@@ -318,58 +275,73 @@ const weaponNames = Object.values(WEAPON_TYPE_KEYS).map(name => {
 });
 const selectedWeapon = ref(weaponNames[0])
 
+function formatWeaponSpecials(specials) {
+  if (!specials || specials.length === 0) return '-';
+  return specials.map(spec => {
+    const type = (spec.status || spec.element || '').replace('blastblight', 'blast');
+    const dmg = spec.damage?.display ? ` ${spec.damage.display}` : '';
+    const formattedType = type.charAt(0).toUpperCase() + type.slice(1);
+    return `${formattedType}${dmg}`;
+  }).join(', ');
+}
+
+function formatPhialDisplay(phialData) {
+    if (!phialData) return '-';
+    let phialKind = null;
+    if (typeof phialData === 'object' && phialData !== null && phialData.hasOwnProperty('kind')) {
+        phialKind = phialData.kind;
+    } else if (typeof phialData === 'string' && phialData.length > 0) {
+        phialKind = phialData;
+    }
+    if (phialKind) {
+        return phialKind.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    return '-';
+}
+
 const headersConfig = {
   Armors: [
-    { key: "name", title: "Name", align: 'start', sortable: true },
-    { key: "armorSet", title: "Set", align: 'start', sortable: true },
-    { key: "kind", title: "Type", align: 'start', sortable: true },
-    { key: "slots", title: "Slots", align: 'center', sortable: false },
-    { key: "skills", title: "Skills", align: 'start', sortable: false },
-  ],
-  Weapons: [
-    { key: "name", title: "Name", align: 'start', sortable: true },
-    { key: "attack", title: "Attack", align: 'start', sortable: true },
-    { key: "affinity", title: "Affinity", align: 'start', sortable: true },
-    { key: "specials", title: "Special", align: 'start', sortable: true },
-    { key: "defense", title: "Defense", align: 'start', sortable: true },
-    { key: "slots", title: "Slots", align: 'start', sortable: false },
-    { key: "sharpness", title: "Sharpness", align: 'center', sortable: true },
-    { key: "skills", title: "Skills", align: 'start', sortable: false },
+    { key: "name", title: "Name", align: 'start', sortable: true, width: "100px" },
+    { key: "armorSet", title: "Set", align: 'start', sortable: true, width: "100px" },
+    { key: "kind", title: "Type", align: 'start', sortable: true, width: "100px" },
+    { key: "slots", title: "Slots", align: 'center', sortable: false, width: "100px" },
+    { key: "skillData", title: "Skills", align: 'start', sortable: false, width: "100px" },
   ],
   Decorations: [
-    { key: "name", title: "Name", align: 'start', sortable: true },
-    { key: "kind", title: "Kind", align: 'start', sortable: true },
-    { key: "slot", title: "Size", align: 'start', sortable: true },
-    { key: "skills", title: "Skills", align: 'start', sortable: false },
+    { key: "name", title: "Name", align: 'start', sortable: true, width: "100px" },
+    { key: "kind", title: "Kind", align: 'start', sortable: true, width: "100px" },
+    { key: "slot", title: "Size", align: 'start', sortable: true, width: "100px" },
+    { key: "skillData", title: "Skills", align: 'start', sortable: false, width: '200px' },
   ],
   Skills: [
-    { key: "name", title: "Name", align: 'start', sortable: true },
-    { key: "level", title: "Lvl", align: 'start', sortable: false },
-    { key: "levelDescription", title: "Level Description", align: 'start', sortable: false },
-    { key: "abilityDescription", title: "Ability Description", align: 'start', sortable: false },
+    { key: "name", title: "Name", align: 'start', sortable: true, width: "100px"  },
+    { key: "level", title: "Lvl", align: 'start', sortable: false, width: "100px"  },
+    { key: "levelDescription", title: "Level Description", align: 'start', sortable: false, width: '300px' },
+    { key: "abilityDescription", title: "Ability Description", align: 'start', sortable: false, width: '300px' },
   ],
 };
 
 const baseWeaponHeaders = [
-  { key: "name", title: "Name", align: 'start', sortable: true },
-  { key: "attack", title: "Attack", align: 'start', sortable: true },
-  { key: "affinity", title: "Affinity", align: 'start', sortable: true },
-  { key: "specials", title: "Special", align: 'start', sortable: true },
-  { key: "defense", title: "Defense", align: 'start', sortable: true },
-  { key: "slots", title: "Slots", align: 'start', sortable: false },
+  { key: "name", title: "Name", align: 'start', sortable: true, width: '200px' },
+  { key: "attack", title: "Attack", align: 'center', sortable: true, width: "100px" },
+  { key: "affinity", title: "Affinity", align: 'center', sortable: true, width: "100px" },
+  { key: "specials", title: "Special", align: 'start', sortable: false, width: "100px" },
+  { key: "defense", title: "Defense", align: 'center', sortable: true, width: "110px" },
+  { key: "slots", title: "Slots", align: 'center', sortable: false, width: "75px" },
 ];
 
-const sharpnessHeader = { key: "sharpness", title: "Sharpness", align: 'center', sortable: true };
-const notesHeader = { key: "notes", title: "Notes", align: 'center', sortable: false };
-const shellHeader = { key: "shells", title: "Shells", align: 'center', sortable: false };
-const saPhialHeader = { key: "phials", title: "Phials", align: 'center', sortable: false };
-const cbPhialHeader = { key: "phials", title: "Phials", align: 'center', sortable: false };
-const kinsectLvlHeader = { key: "kinsectLvl", title: "Kinsect Lvl", align: 'center', sortable: false };
-const coatingsHeader = { key: "coatings", title: "Coatings", align: 'center', sortable: false };
-const lbgRapidHeader = { key: "lbgRapid", title: "Rapid", align: 'center', sortable: false };
-const lbgMagazineHeader = { key: "lbgMagazine", title: "Magazine", align: 'center', sortable: false };
-const hbgMagazineHeader = { key: "hbgMagazine", title: "Magazine", align: 'center', sortable: false };
-const skillsHeader = { key: "skills", title: "Skills", align: 'start', sortable: false };
+const sharpnessHeader = { key: "sharpness", title: "Sharpness", align: 'center', sortable: false, width: "100px" };
+const notesHeader = { key: "notes", title: "Notes", align: 'center', sortable: false, width: "150px" };
+const shellHeader = { key: "shellInfo", title: "Shells", align: 'center', sortable: false, width: "100px" };
+const saPhialHeader = { key: "phials", title: "Phials", align: 'center', sortable: false, width: "100px" };
+const cbPhialHeader = { key: "phials", title: "Phials", align: 'center', sortable: false, width: "100px" };
+const kinsectLvlHeader = { key: "kinsectLvl", title: "Kinsect Lvl", align: 'center', sortable: false, width: "100px" };
+const coatingsHeader = { key: "coatings", title: "Coatings", align: 'center', sortable: false, width: "150px" };
+const lbgRapidHeader = { key: "lbgRapid", title: "Rapid", align: 'center', sortable: false, width: "150px" };
+const lbgMagazineHeader = { key: "lbgMagazine", title: "Magazine", align: 'center', sortable: false, width: "100px" };
+const hbgMagazineHeader = { key: "hbgMagazine", title: "Magazine", align: 'center', sortable: false, width: "100px" };
+const skillsHeader = { key: "skillData", title: "Skills", align: 'start', sortable: false, width: '200px' };
+
 
 
 // Computed Properties
@@ -383,7 +355,7 @@ const itemsConfig = {
       kind: armor.kind.charAt(0).toUpperCase() + armor.kind.slice(1),
       defense: armor.defense?.base || '-',
       slots: armor.slots?.join('-') || '-',
-      skills: armor.skills?.map(s => `${s.skill.name} Lvl ${s.level}`).join('<br>') || '-',
+      skillData: armor.skills || [],
       armorSet: armor.armorSet?.name || 'N/A'
     }));
   }),
@@ -393,244 +365,46 @@ const itemsConfig = {
     return dataStore.allWeaponData
       .filter(weapon => weapon.kind.charAt(0).toUpperCase() + weapon.kind.slice(1) === selectedWeapon.value)
       .map(weapon => {
-        const getPhialDisplay = (phialData) => {
-          if (!phialData) {
-            return '-';
-          }
-          let phialKind = null;
-          if (typeof phialData === 'object' && phialData !== null && phialData.hasOwnProperty('kind')) {
-            phialKind = phialData.kind;
-          } else if (typeof phialData === 'string' && phialData.length > 0) {
-            phialKind = phialData;
-          }
-          if (phialKind) {
-            return phialKind.charAt(0).toUpperCase() + phialKind.slice(1);
-          }
-          return '-';
-        };
+
         const baseWeaponData = {
           key: `weapon-${weapon.id || keyCounter++}`,
           name: weapon.name,
-          attack: weapon.damage.display || '-',
-          affinity: `${weapon.affinity}%` || '-',
-          specials: weapon.specials && weapon.specials.length > 0
-            ? weapon.specials.map(spec => {
-              const type = spec.status || spec.element;
-              const dmg = spec.damage?.display ? ` ${spec.damage.display}` : '';
-              return `${type.replace('blastblight', 'blast')}${dmg}`;
-            }).join(', ')
-            : '-',
+          attack: weapon.damage?.display || '-',
+          affinity: weapon.affinity !== null ? `${weapon.affinity}%` : '-',
+          specials: formatWeaponSpecials(weapon.specials),
           defense: weapon.defense?.base || '-',
           slots: weapon.slots?.join('-') || '-',
+          skillData: weapon.skills || [],
+          // --- Weapon specific data ---
           notes: weapon.melody
             ? {
-              notes: weapon.melody.notes,
+              notes: processNoteColors(weapon.melody.notes),
               songs: weapon.melody.songs.map(song => {
-                const sequenceString = song.sequence.join(',');
-                return `${sequenceString}: ${song.name}`;
+                return {
+                  name: song.name,
+                  sequence: processNoteColors(song.sequence)
+                }
               }),
               echoBubble: weapon.echoBubble?.name,
               echoWave: weapon.echoWave ? weapon.echoWave.kind.charAt(0).toUpperCase() + weapon.echoWave.kind.slice(1) : '-'
             }
-            : '-',
-          shells: weapon.shell
-            ? `${weapon.shell.charAt(0).toUpperCase() + weapon.shell.slice(1)} <br> Lvl ${weapon.shellLevel || '?'}`
-            : '-',
-          phials: getPhialDisplay(weapon.phial),
+            : null,
+          shellInfo: weapon.shell
+            ? {
+                type: weapon.shell.charAt(0).toUpperCase() + weapon.shell.slice(1),
+                level: weapon.shellLevel || '?'
+              }
+            : null,
+          phials: formatPhialDisplay(weapon.phial),
           kinsectLvl: weapon.kinsectLevel || '-',
-          skills: weapon.skills?.map(s => `${s.skill.name} Lvl ${s.level}`).join('<br>') || '-',
+          sharpness: weapon.sharpness ? generateSharpnessGradient(weapon.sharpness) : 'black 0%, black 100%',
+          coatings: selectedWeapon.value === 'Bow' ? processBowCoatings(weapon.coatings) : null,
+          lbgRapid: selectedWeapon.value === 'Light-bowgun' ? processLbgRapid(weapon.ammo) : null,
+          lbgMagazine: selectedWeapon.value === 'Light-bowgun' ? processAmmoMagazine(weapon.ammo) : null,
+          hbgMagazine: selectedWeapon.value === 'Heavy-bowgun' ? processAmmoMagazine(weapon.ammo) : null,
         };
-        if (selectedWeapon.value === 'Bow') {
-          const baseCoatingClrs = {
-            'Power': '#b22222',
-            'Pierce': '#1e90ff',
-            'Close-Range': '#c0c0c0',
-            'Poison': '#800080',
-            'Paralysis': '#ffd700',
-            'Sleep': '#afeeee',
-            'Exhaust': '#00ffff',
-            'Blast': '#ffa500',
-          };
-          const availableCoatings = weapon.coatings || [];
-          const processedCoatingClrs = Object.fromEntries(
-            Object.keys(baseCoatingClrs).map(coatingType => {
-              const hasCoating = availableCoatings.includes(coatingType.toLowerCase());
-              const color = hasCoating ? baseCoatingClrs[coatingType] : '#ffffff';
-              return [coatingType, color];
-            })
-          );
-          return {
-            ...baseWeaponData,
-            coatings: processedCoatingClrs,
-          }
-        } else if (selectedWeapon.value === 'Light-bowgun') {
-          const baseShotClrs = {
-            'Normal': '#808080',
-            'Pierce': '#1e90ff',
-            'Spread': '#228b22',
-            'Blank0': '#000000',
-            'Flaming': '#ff0000',
-            'Water': '#0000ff',
-            'Freeze': '#b0e0e6',
-            'Thunder': '#ffff00',
-            'Dragon': '#f08080',
-            'Poison': '#800080',
-            'Paralysis': '#ffd700',
-            'Sleep': '#afeeee',
-            'Exhaust': '#00ffff',
-            'Blank2': '#000000',
-            'Slicing': '#696969',
-            'Sticky': '#ff8c00',
-            'Cluster': '#8b0000',
-            'Wyvern': '#b8860b',
-            'Blank3': '#000000',
-            'Demon': '#8b0000',
-            'Armor': '#f4a460',
-            'Recover': '#2e8b57',
-            'Tranq': '#fa8072',
-            'Blank5': '#000000',
-          };
 
-          const availableRapidMap = new Map();
-          if (weapon.ammo && Array.isArray(weapon.ammo)) {
-            weapon.ammo.forEach(ammo => {
-              if (ammo && ammo.kind && ammo.rapid === true) {
-                availableRapidMap.set(ammo.kind.toLowerCase(), ammo);
-              }
-            });
-          }
-
-          const processedRapidInfo = {};
-          Object.keys(baseShotClrs).forEach(shotTypeKey => {
-            const lowerCaseShotTypeKey = shotTypeKey.toLowerCase();
-            const rapidDetails = availableRapidMap.get(lowerCaseShotTypeKey);
-            if (rapidDetails) {
-              processedRapidInfo[shotTypeKey] = {
-                details: rapidDetails,
-                color: baseShotClrs[shotTypeKey]
-              };
-            }
-          });
-
-          const availableAmmoMap = new Map();
-          if (weapon.ammo && Array.isArray(weapon.ammo)) {
-            weapon.ammo.forEach(ammo => {
-              if (ammo && ammo.kind) {
-                availableAmmoMap.set(ammo.kind.toLowerCase(), ammo);
-              }
-            });
-          }
-
-          const processedAmmoInfo = {};
-          Object.keys(baseShotClrs).forEach(shotTypeKey => {
-            const lowerCaseShotTypeKey = shotTypeKey.toLowerCase();
-            const isBlankType = shotTypeKey.startsWith('Blank');
-            const ammoDetails = availableAmmoMap.get(lowerCaseShotTypeKey);
-            const hasAmmo = !!ammoDetails;
-            const color = (hasAmmo || isBlankType)
-              ? baseShotClrs[shotTypeKey]
-              : '#ffffff';
-            processedAmmoInfo[shotTypeKey] = {
-              details: ammoDetails || null,
-              color: color
-            };
-          });
-
-          return {
-            ...baseWeaponData,
-            lbgRapid: processedRapidInfo,
-            lbgMagazine: processedAmmoInfo
-          }
-        } else if (selectedWeapon.value === 'Heavy-bowgun') {
-          const baseShotClrs = {
-            'Normal': '#808080',
-            'Pierce': '#1e90ff',
-            'Spread': '#228b22',
-            'Blank0': '#000000',
-            'Flaming': '#ff0000',
-            'Water': '#0000ff',
-            'Freeze': '#b0e0e6',
-            'Thunder': '#ffff00',
-            'Dragon': '#f08080',
-            'Poison': '#800080',
-            'Paralysis': '#ffd700',
-            'Sleep': '#afeeee',
-            'Exhaust': '#00ffff',
-            'Blank2': '#000000',
-            'Slicing': '#696969',
-            'Sticky': '#ff8c00',
-            'Cluster': '#8b0000',
-            'Wyvern': '#b8860b',
-            'Blank3': '#000000',
-            'Demon': '#8b0000',
-            'Armor': '#f4a460',
-            'Recover': '#2e8b57',
-            'Tranq': '#fa8072',
-            'Blank5': '#000000',
-          };
-
-          const availableAmmoMap = new Map();
-          if (weapon.ammo && Array.isArray(weapon.ammo)) {
-            weapon.ammo.forEach(ammo => {
-              if (ammo && ammo.kind) {
-                availableAmmoMap.set(ammo.kind.toLowerCase(), ammo);
-              }
-            });
-          }
-
-          const processedAmmoInfo = {};
-          Object.keys(baseShotClrs).forEach(shotTypeKey => {
-            const lowerCaseShotTypeKey = shotTypeKey.toLowerCase();
-            const isBlankType = shotTypeKey.startsWith('Blank');
-            const ammoDetails = availableAmmoMap.get(lowerCaseShotTypeKey);
-            const hasAmmo = !!ammoDetails;
-            const color = (hasAmmo || isBlankType)
-              ? baseShotClrs[shotTypeKey]
-              : '#ffffff';
-            processedAmmoInfo[shotTypeKey] = {
-              details: ammoDetails || null,
-              color: color
-            };
-          });
-
-          return {
-            ...baseWeaponData,
-            hbgMagazine: processedAmmoInfo
-          }
-        } else {
-          let sharpnessString = '-';
-          const sharpnessData = weapon.sharpness;
-          const maxTotalLength = 350;
-          const colorOrder = ["red", "orange", "yellow", "green", "blue", "white", "purple"];
-          const gradientParts = [];
-          let cumulativePercentage = 0;
-          colorOrder.forEach(color => {
-            const value = sharpnessData[color] || 0;
-            if (value > 0) {
-              const segmentPercentage = (value / maxTotalLength) * 100;
-              if (cumulativePercentage > 0.001) {
-                gradientParts.push(`${color} ${cumulativePercentage.toFixed(4)}%`);
-              }
-              cumulativePercentage += segmentPercentage;
-              gradientParts.push(`${color} ${Math.min(100, cumulativePercentage.toFixed(4))}%`);
-            }
-          });
-          if (cumulativePercentage < 99.99 && cumulativePercentage > 0) {
-            gradientParts.push(`black ${Math.max(0, cumulativePercentage.toFixed(4))}%`);
-            gradientParts.push(`black 100%`);
-          } else if (cumulativePercentage === 0) {
-            gradientParts.push('black 0%', 'black 100%');
-          }
-          if (gradientParts.length > 0) {
-            sharpnessString = gradientParts.join(', ');
-          } else {
-            sharpnessString = 'black 0%, black 100%';
-          }
-          return {
-            ...baseWeaponData,
-            sharpness: sharpnessString,
-          };
-        }
+        return baseWeaponData;
       });
   }),
   Decorations: computed(() => {
@@ -640,7 +414,7 @@ const itemsConfig = {
       key: `deco-${deco.id || keyCounter++}`,
       name: deco.name.slice(0, -4),
       slot: deco.slot,
-      skills: deco.skills?.map(s => `${s.skill.name} Lvl ${s.level}`).join('<br>') || '-',
+      skillData: deco.skills || [],
       kind: deco.kind ? (deco.kind.charAt(0).toUpperCase() + deco.kind.slice(1)) : 'N/A',
     }));
   }),
@@ -649,9 +423,10 @@ const itemsConfig = {
     const details = [];
     let keyCounter = 0;
     dataStore.allSkillData.forEach(skill => {
-      skill.ranks?.forEach(rank => {
+      const ranks = Array.isArray(skill.ranks) ? skill.ranks : [];
+      ranks.forEach(rank => {
         details.push({
-          key: `skill-${keyCounter++}`,
+          key: `skill-${skill.id}-${rank.level || keyCounter++}`,
           name: skill.name,
           abilityDescription: skill.description,
           level: rank.level,
@@ -663,32 +438,167 @@ const itemsConfig = {
   }),
 };
 
+function generateSharpnessGradient(sharpnessData) {
+    if (!sharpnessData) return 'black 0%, black 100%';
+    const maxTotalLength = 350;
+    const colorOrder = ["red", "orange", "yellow", "green", "blue", "white", "purple"];
+    const gradientParts = [];
+    let cumulativePercentage = 0;
+    colorOrder.forEach(color => {
+        const value = sharpnessData[color] || 0;
+        if (value > 0) {
+            const segmentPercentage = (value / maxTotalLength) * 100;
+            if (cumulativePercentage > 0.001) {
+                gradientParts.push(`${color} ${cumulativePercentage.toFixed(4)}%`);
+            }
+            cumulativePercentage += segmentPercentage;
+            gradientParts.push(`${color} ${Math.min(100, cumulativePercentage.toFixed(4))}%`);
+        }
+    });
+    if (cumulativePercentage < 99.99 && cumulativePercentage > 0) {
+        gradientParts.push(`black ${Math.max(0, cumulativePercentage.toFixed(4))}%`);
+        gradientParts.push(`black 100%`);
+    } else if (cumulativePercentage === 0) {
+        gradientParts.push('black 0%', 'black 100%');
+    }
+    return gradientParts.length > 0 ? gradientParts.join(', ') : 'black 0%, black 100%';
+}
+
+function processNoteColors(notesData) {
+  const processedNotes = notesData.map(
+    note => note.replace('white', '#ffffff').replace('red', '#ff0000').replace('yellow', '#ffff00').replace('blue', '#0000ff').replace('purple', '#800080').replace('green', '#008000').replace('orange', '#ffa500').replace('aqua', '#00ffff')
+  )
+  return processedNotes;
+}
+
+
+function processBowCoatings(coatingsData) {
+    const baseCoatingClrs = {
+        'Power': '#b22222',
+        'Pierce': '#1e90ff',
+        'Close-Range': '#c0c0c0',
+        'Blast': '#ffa500',
+        'Poison': '#800080',
+        'Paralysis': '#ffd700',
+        'Sleep': '#afeeee',
+        'Exhaust': '#00ffff',
+    };
+    const availableCoatingsLower = Array.isArray(coatingsData)
+        ? coatingsData.map(c => typeof c === 'string' ? c.toLowerCase() : '').filter(c => c) // Filter empty strings
+        : [];
+    const processedCoatings = {};
+    Object.keys(baseCoatingClrs).forEach(coatingType => {
+        const hasCoating = availableCoatingsLower.includes(coatingType.toLowerCase());
+        processedCoatings[coatingType] = hasCoating ? baseCoatingClrs[coatingType] : '#ffffff';
+    });
+    return processedCoatings;
+}
+
+function processLbgRapid(ammo) {
+   const baseShotClrs = {
+        'Normal': '#808080', 'Pierce': '#1e90ff', 'Spread': '#228b22',
+        'Blank0': '#000000',
+        'Flaming': '#ff0000', 'Water': '#0000ff', 'Freeze': '#b0e0e6', 'Thunder': '#ffff00', 'Dragon': '#f08080',
+        'Blank1': '#000000',
+        'Poison': '#800080', 'Paralysis': '#ffd700', 'Sleep': '#afeeee', 'Exhaust': '#00ffff',
+        'Blank2': '#000000',
+        'Slicing': '#696969', 'Sticky': '#ff8c00', 'Cluster': '#8b0000', 'Wyvern': '#b8860b',
+        'Blank3': '#000000',
+        'Demon': '#8b0000', 'Armor': '#f4a460', 'Recover': '#2e8b57', 'Tranq': '#fa8072',
+        'Blank5': '#000000',
+    };
+
+   const availableRapidMap = new Map();
+   if (ammo && Array.isArray(ammo)) {
+     ammo.forEach(a => {
+        if (a && a.kind && a.rapid === true) {
+            availableRapidMap.set(a.kind.toLowerCase(), a);
+        }
+     });
+   }
+
+   const processedRapidInfo = {};
+    Object.keys(baseShotClrs).forEach(shotTypeKey => {
+      const lowerCaseShotTypeKey = shotTypeKey.toLowerCase();
+      const rapidDetails = availableRapidMap.get(lowerCaseShotTypeKey);
+      if (rapidDetails) {
+        processedRapidInfo[shotTypeKey] = {
+          details: rapidDetails,
+          color: baseShotClrs[shotTypeKey]
+        };
+      }
+    });
+   return processedRapidInfo;
+}
+
+
+function processAmmoMagazine(ammo) {
+    const baseShotClrs = {
+        'Normal': '#808080', 'Pierce': '#1e90ff', 'Spread': '#228b22',
+        'Blank0': '#000000',
+        'Flaming': '#ff0000', 'Water': '#0000ff', 'Freeze': '#b0e0e6', 'Thunder': '#ffff00', 'Dragon': '#f08080',
+        'Blank1': '#000000',
+        'Poison': '#800080', 'Paralysis': '#ffd700', 'Sleep': '#afeeee', 'Exhaust': '#00ffff',
+        'Blank2': '#000000',
+        'Slicing': '#696969', 'Sticky': '#ff8c00', 'Cluster': '#8b0000', 'Wyvern': '#b8860b',
+        'Blank3': '#000000',
+        'Demon': '#8b0000', 'Armor': '#f4a460', 'Recover': '#2e8b57', 'Tranq': '#fa8072',
+        'Blank5': '#000000',
+    };
+
+    const availableAmmoMap = new Map(); // Creates map
+    if (ammo && Array.isArray(ammo)) { // Populates map (using the 'ammo' argument)
+        ammo.forEach(a => {
+            if (a && a.kind) {
+                availableAmmoMap.set(a.kind.toLowerCase(), a);
+            }
+        });
+    }
+    const processedAmmoInfo = {}; // Creates result object
+    Object.keys(baseShotClrs).forEach(shotTypeKey => { // Loops through all possible types
+        const lowerCaseShotTypeKey = shotTypeKey.toLowerCase();
+        const isBlankType = shotTypeKey.startsWith('Blank');
+        const ammoDetails = availableAmmoMap.get(lowerCaseShotTypeKey); // Looks up ammo
+        const hasAmmo = !!ammoDetails;
+        const color = (hasAmmo || isBlankType) ? baseShotClrs[shotTypeKey] : '#ffffff'; // Determines color
+        processedAmmoInfo[shotTypeKey] = { // Assigns result for this type
+            details: ammoDetails || null, // <= Stores full details if found, else null
+            color: color
+        };
+    });
+    // Returns the final object
+    return processedAmmoInfo;
+}
+
 const currentHeaders = computed(() => {
   const selectedTable = selectedDatatable.value;
 
   if (selectedTable === 'Weapons') {
-    if (selectedWeapon.value === 'Hunting-horn') {
-      return [...baseWeaponHeaders, sharpnessHeader, notesHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Gunlance') {
-      return [...baseWeaponHeaders, sharpnessHeader, shellHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Switch-axe') {
-      return [...baseWeaponHeaders, sharpnessHeader, saPhialHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Charge-blade') {
-      return [...baseWeaponHeaders, sharpnessHeader, cbPhialHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Insect-glaive') {
-      return [...baseWeaponHeaders, sharpnessHeader, kinsectLvlHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Bow') {
-      return [...baseWeaponHeaders, coatingsHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Light-bowgun') {
-      return [...baseWeaponHeaders, lbgRapidHeader, lbgMagazineHeader, skillsHeader];
-    } else if (selectedWeapon.value === 'Heavy-bowgun') {
-      return [...baseWeaponHeaders, hbgMagazineHeader, skillsHeader];
-    } else {
-      return [...baseWeaponHeaders, sharpnessHeader, skillsHeader];
+    const weaponTypeSpecificHeaders = [];
+    const weapon = selectedWeapon.value;
+
+    if (weapon !== 'Light-bowgun' && weapon !== 'Heavy-bowgun' && weapon !== 'Bow') {
+        weaponTypeSpecificHeaders.push(sharpnessHeader);
     }
+
+    if (weapon === 'Hunting-horn') weaponTypeSpecificHeaders.push(notesHeader);
+    if (weapon === 'Gunlance') weaponTypeSpecificHeaders.push(shellHeader);
+    if (weapon === 'Switch-axe') weaponTypeSpecificHeaders.push(saPhialHeader);
+    if (weapon === 'Charge-blade') weaponTypeSpecificHeaders.push(cbPhialHeader);
+    if (weapon === 'Insect-glaive') weaponTypeSpecificHeaders.push(kinsectLvlHeader);
+    if (weapon === 'Bow') weaponTypeSpecificHeaders.push(coatingsHeader);
+    if (weapon === 'Light-bowgun') {
+        weaponTypeSpecificHeaders.push(lbgRapidHeader);
+        weaponTypeSpecificHeaders.push(lbgMagazineHeader);
+    }
+    if (weapon === 'Heavy-bowgun') weaponTypeSpecificHeaders.push(hbgMagazineHeader);
+
+    return [...baseWeaponHeaders, ...weaponTypeSpecificHeaders, skillsHeader];
   }
+
   return headersConfig[selectedTable] || [];
 });
+
 const currentItems = computed(() => itemsConfig[selectedDatatable.value]?.value || []);
 
 // Watchers
@@ -698,7 +608,17 @@ watch(selectedDataTypeIndex, () => {
 </script>
 
 <style scoped>
-@media (max-width: 600px) {
+.skills-column {
+  line-height: 1.3;
+  font-size: 0.85rem;
+}
+
+.item-column-name {
+  word-break: break-word;
+  white-space: normal;
+}
+
+@media (max-width: 1350px) {
   .responsive-btn-toggle {
     display: flex;
     flex-direction: column;
@@ -726,60 +646,39 @@ watch(selectedDataTypeIndex, () => {
      border-left-width: 1px !important;
      border-top-width: 0 !important;
   }
+
   :deep(.v-data-table__td) {
     min-width: 110px !important;
-    white-space: normal !important;
-    word-break: break-word;
+    max-width: 110px !important;
   }
-  :deep(.v-data-table__td:has(.weapon-column-name)) {
-    min-width: 200px !important;
-    white-space: normal !important;
-    word-break: break-word;
-  }
-  :deep(.v-data-table__td:has(.weapon-column-notes)) {
+  :deep(.v-data-table__td:has(.item-column-name)) {
     min-width: 150px !important;
-    white-space: normal !important;
-    word-break: break-word;
+    max-width: 150px !important;
   }
-  :deep(.v-data-table__td:has(.weapon-column-coatings)) {
+  :deep(.v-data-table__td:has(.skills-column)) {
+    min-width: 180px !important;
+    max-width: 180px !important;
+  }
+   :deep(.v-data-table__td:has(.skill-column-level-desc)) {
     min-width: 200px !important;
-    white-space: normal !important;
-    word-break: break-word;
-  }
-  :deep(.v-data-table__td:has(.weapon-column-lbgrapid)) {
-    min-width: 150px !important;
-    white-space: normal !important;
-    word-break: break-word;
-  }
-  :deep(.v-data-table__td:has(.weapon-column-lbgmagazine)) {
-    min-width: 200px !important;
-    white-space: normal !important;
-    word-break: break-word;
-  }
-  :deep(.v-data-table__td:has(.weapon-column-hbgmagazine)) {
-    min-width: 200px !important;
-    white-space: normal !important;
-    word-break: break-word;
-  }
-  :deep(.v-data-table__td:has(.weapon-column-skills)) {
-    min-width: 200px !important;
-    white-space: normal !important;
-    word-break: break-word;
-  }
+    max-width: 200px !important;
+   }
+    :deep(.v-data-table__td:has(.weapon-column-notes)) { min-width: 150px !important; max-width: 150px !important }
+    :deep(.v-data-table__td:has(.weapon-column-coatings)) { min-width: 200px !important; max-width: 200px !important }
+    :deep(.v-data-table__td:has(.weapon-column-lbgrapid)) { min-width: 150px !important; max-width: 150px !important }
+    :deep(.v-data-table__td:has(.weapon-column-lbgmagazine)) { min-width: 200px !important; max-width: 200px !important }
+    :deep(.v-data-table__td:has(.weapon-column-hbgmagazine)) { min-width: 200px !important; max-width: 200px !important }
 }
 
 .data-table-full-width {
   width: 100%;
 }
 
-:deep(.v-data-table__td[aria-colindex="2"]) {
-  width: 50px;
-  min-width: 50px;
-  text-align: center;
-}
-
 :deep(.v-data-table__td) {
   white-space: normal !important;
   word-break: break-word;
+  vertical-align: top;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
 }
 </style>
