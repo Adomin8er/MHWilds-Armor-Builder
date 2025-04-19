@@ -454,8 +454,8 @@ const itemsConfig = {
           name: skill.name,
           kind: skill.kind.charAt(0).toUpperCase() + skill.kind.slice(1),
           level: rank.level,
-          skillDescription: skill.description,
-          levelDescription: rank.description
+          skillDescription: rank.description,
+          abilityDescription: skill.description
         });
       });
     });
