@@ -29,7 +29,7 @@ export const useBuildStore = defineStore('build', () => {
 
   // Getters
   const totalSkills = computed(() => {
-    console.log("Recalculating total skills...");
+    // console.log("Recalculating total skills...");
     const combined = {};
   
      for (const pieceType in selectedEquipment.value) {
@@ -75,7 +75,7 @@ export const useBuildStore = defineStore('build', () => {
                                 contributingPieces: new Set()
                             };
                            } else {
-                             console.log(`Incrementing level for '${skillName}'. Current level: ${combined[skillName].level}`);
+                            //  console.log(`Incrementing level for '${skillName}'. Current level: ${combined[skillName].level}`);
                            }
                            combined[skillName].level++; // Increment level
                            combined[skillName].sources.push(`${pieceType}:${skillKey} -> "${skillValue}"`);
@@ -106,7 +106,7 @@ export const useBuildStore = defineStore('build', () => {
             combined[skillName].pieceCount = 0;
         }
       } 
-   console.log("Finished recalculating total skills.");
+  //  console.log("Finished recalculating total skills.");
   //  console.log("Finished recalculating total skills. Final combined:", JSON.stringify(combined));
      return combined;
   });
