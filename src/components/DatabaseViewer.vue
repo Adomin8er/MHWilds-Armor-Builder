@@ -14,8 +14,8 @@
         class="responsive-btn-toggle border mb-2"
       >
         <v-btn>Armors</v-btn>
-        <v-btn>Weapons</v-btn>
         <v-btn>Talismans</v-btn>
+        <v-btn>Weapons</v-btn>
         <v-btn>Decorations</v-btn>
         <v-btn>Skills</v-btn>
       </v-btn-toggle>
@@ -265,8 +265,8 @@ const dataStore = useDataStore();
 // Local Data / Mappings
 const search = ref('');
 
-const selectedDataTypeIndex = ref(0); // 0: Armors, 1:Weapons, 2:Talismans, 3: Decorations, 4: Skills
-const dataTypes = ['Armors', 'Weapons', 'Talismans', 'Decorations', 'Skills'];
+const selectedDataTypeIndex = ref(0); // 0: Armors, 1:Talismans, 2:Weapons, 3: Decorations, 4: Skills
+const dataTypes = ['Armors', 'Talismans', 'Weapons', 'Decorations', 'Skills'];
 const selectedDatatable = computed(() => dataTypes[selectedDataTypeIndex.value]);
 const weaponNames = Object.values(WEAPON_TYPE_KEYS).map(name => {
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
@@ -308,18 +308,20 @@ const headersConfig = {
   Talismans: [
     { key: "name", title: "Name", align: 'start', sortable: true, width: "100px" },
     { key: "skillData", title: "Skills", align: 'start', sortable: false, width: "100px" },
-    { key: "description", title: "Description", align: 'start', sortable: false, width: "200px" },
+    { key: "skillDescription", title: "Skill Description", align: 'start', sortable: false, width: "200px" },
   ],
   Decorations: [
     { key: "name", title: "Name", align: 'start', sortable: true, width: "100px" },
     { key: "kind", title: "Kind", align: 'start', sortable: true, width: "100px" },
-    { key: "slot", title: "Size", align: 'start', sortable: true, width: "100px" },
-    { key: "skillData", title: "Skills", align: 'start', sortable: false, width: '200px' },
+    { key: "slot", title: "Size", align: 'start', sortable: true, width: "75px" },
+    { key: "skillData", title: "Skills", align: 'start', sortable: false, width: '100px' },
+    { key: "skillDescription", title: "Skill Description", align: 'start', sortable: false, width: '250px' },
   ],
   Skills: [
     { key: "name", title: "Name", align: 'start', sortable: true, width: "100px"  },
+    { key: "kind", title: "Kind", align: 'start', sortable: false, width: "100px"  },
     { key: "level", title: "Lvl", align: 'start', sortable: false, width: "100px"  },
-    { key: "levelDescription", title: "Level Description", align: 'start', sortable: false, width: '300px' },
+    { key: "skillDescription", title: "Skill Description", align: 'start', sortable: false, width: '300px' },
     { key: "abilityDescription", title: "Ability Description", align: 'start', sortable: false, width: '300px' },
   ],
 };
@@ -373,7 +375,7 @@ const itemsConfig = {
               const skillLevel = skill?.level || '?';
               return `${skillName} Lvl ${skillLevel}`;
             }).join('<br>') || '-',
-          description: rank.skills.map(skill => skill?.description || 'No description')
+            skillDescription: rank.skills.map(skill => skill?.description || 'No description')
             .join('<br>') || '-',
         };
       }).filter(Boolean)
@@ -395,7 +397,7 @@ const itemsConfig = {
           specials: formatWeaponSpecials(weapon.specials),
           defense: weapon.defense?.base || '-',
           slots: weapon.slots?.join('-') || '-',
-          skillData: weapon.skills || [],
+          skillData: weapon.skills.map(skill => `${skill.skill.name} Lvl ${skill.level}`).join('<br>') || '-',
           // --- Weapon specific data ---
           notes: weapon.melody
             ? {
@@ -434,9 +436,10 @@ const itemsConfig = {
     return dataStore.allDecorationData.map(deco => ({
       key: `deco-${deco.id || keyCounter++}`,
       name: deco.name.slice(0, -4),
+      kind: deco.kind ? (deco.kind.charAt(0).toUpperCase() + deco.kind.slice(1)) : 'N/A',
       slot: deco.slot,
       skillData: deco.skills.map(skill => `${skill.skill.name} Lvl ${skill.level}`).join('<br>') || '-',
-      kind: deco.kind ? (deco.kind.charAt(0).toUpperCase() + deco.kind.slice(1)) : 'N/A',
+      skillDescription: deco.description || '-'
     }));
   }),
   Skills: computed(() => {
@@ -449,8 +452,9 @@ const itemsConfig = {
         details.push({
           key: `skill-${skill.id}-${rank.level || keyCounter++}`,
           name: skill.name,
-          abilityDescription: skill.description,
+          kind: skill.kind.charAt(0).toUpperCase() + skill.kind.slice(1),
           level: rank.level,
+          skillDescription: skill.description,
           levelDescription: rank.description
         });
       });
