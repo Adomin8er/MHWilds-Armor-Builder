@@ -20,7 +20,7 @@
         <v-btn>Skills</v-btn>
       </v-btn-toggle>
 
-      <v-autocomplete v-if="selectedDataTypeIndex === 1" v-model="selectedWeapon" label="Weapon Type"
+      <v-autocomplete v-if="selectedDataTypeIndex === 2" v-model="selectedWeapon" label="Weapon Type"
         :items="weaponNames" variant="underlined" width="200">
       </v-autocomplete>
 
@@ -439,7 +439,7 @@ const itemsConfig = {
       kind: deco.kind ? (deco.kind.charAt(0).toUpperCase() + deco.kind.slice(1)) : 'N/A',
       slot: deco.slot,
       skillData: deco.skills.map(skill => `${skill.skill.name} Lvl ${skill.level}`).join('<br>') || '-',
-      skillDescription: deco.description || '-'
+      skillDescription: deco.skills.map(skill => `${skill.description}`).join('<br>') || '-' || '-'
     }));
   }),
   Skills: computed(() => {
