@@ -15,6 +15,7 @@
       >
         <v-btn>Armors</v-btn>
         <v-btn>Weapons</v-btn>
+        <v-btn>Talismans</v-btn>
         <v-btn>Decorations</v-btn>
         <v-btn>Skills</v-btn>
       </v-btn-toggle>
@@ -44,10 +45,7 @@
         </template>
 
         <template v-slot:item.skillData="{ item }">
-           <div v-if="item.skillData && item.skillData.length > 0" class="skills-column">
-             <div v-for="skillItem in item.skillData" :key="skillItem.skill.id || skillItem.skill.name" class="skill-entry">
-               {{ skillItem.skill.name }} Lvl {{ skillItem.level }}
-             </div>
+           <div v-if="item.skillData" v-html="item.skillData" class="skills-column">
            </div>
            <span v-else>-</span>
          </template>
@@ -267,8 +265,8 @@ const dataStore = useDataStore();
 // Local Data / Mappings
 const search = ref('');
 
-const selectedDataTypeIndex = ref(0); // 0: Armors, 1:Weapons, 2: Decorations, 3: Skills
-const dataTypes = ['Armors', 'Weapons', 'Decorations', 'Skills'];
+const selectedDataTypeIndex = ref(0); // 0: Armors, 1:Weapons, 2:Talismans, 3: Decorations, 4: Skills
+const dataTypes = ['Armors', 'Weapons', 'Talismans', 'Decorations', 'Skills'];
 const selectedDatatable = computed(() => dataTypes[selectedDataTypeIndex.value]);
 const weaponNames = Object.values(WEAPON_TYPE_KEYS).map(name => {
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
@@ -306,6 +304,11 @@ const headersConfig = {
     { key: "kind", title: "Type", align: 'start', sortable: true, width: "100px" },
     { key: "slots", title: "Slots", align: 'center', sortable: false, width: "100px" },
     { key: "skillData", title: "Skills", align: 'start', sortable: false, width: "100px" },
+  ],
+  Talismans: [
+    { key: "name", title: "Name", align: 'start', sortable: true, width: "100px" },
+    { key: "skillData", title: "Skills", align: 'start', sortable: false, width: "100px" },
+    { key: "description", title: "Description", align: 'start', sortable: false, width: "200px" },
   ],
   Decorations: [
     { key: "name", title: "Name", align: 'start', sortable: true, width: "100px" },
@@ -355,10 +358,28 @@ const itemsConfig = {
       kind: armor.kind.charAt(0).toUpperCase() + armor.kind.slice(1),
       defense: armor.defense?.base || '-',
       slots: armor.slots?.join('-') || '-',
-      skillData: armor.skills || [],
+      skillData: armor.skills.map(skill => `${skill.skill.name} Lvl ${skill.level}`).join('<br>') || '-',
       armorSet: armor.armorSet?.name || 'N/A'
     }));
   }),
+  Talismans: computed(() => {
+    return dataStore.allCharmData.flatMap(talismanType =>
+      talismanType.ranks.map(rank => {
+        return {
+          key: `talisman-${rank.id}`,
+          name: rank.name || 'Unknown Charm',
+          skillData: rank.skills.map(skill => {
+              const skillName = skill?.skill?.name || 'Unknown Skill';
+              const skillLevel = skill?.level || '?';
+              return `${skillName} Lvl ${skillLevel}`;
+            }).join('<br>') || '-',
+          description: rank.skills.map(skill => skill?.description || 'No description')
+            .join('<br>') || '-',
+        };
+      }).filter(Boolean)
+    );
+  }),
+
   Weapons: computed(() => {
     if (!dataStore.allWeaponData) return [];
     let keyCounter = 0;
@@ -414,7 +435,7 @@ const itemsConfig = {
       key: `deco-${deco.id || keyCounter++}`,
       name: deco.name.slice(0, -4),
       slot: deco.slot,
-      skillData: deco.skills || [],
+      skillData: deco.skills.map(skill => `${skill.skill.name} Lvl ${skill.level}`).join('<br>') || '-',
       kind: deco.kind ? (deco.kind.charAt(0).toUpperCase() + deco.kind.slice(1)) : 'N/A',
     }));
   }),
@@ -629,7 +650,7 @@ watch(selectedDataTypeIndex, () => {
   }
 
   :deep(.v-btn-group) {
-    min-height: 85px;
+    min-height: 98px;
   }
 
   .responsive-btn-toggle .v-btn {
